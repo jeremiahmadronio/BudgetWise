@@ -2,6 +2,7 @@ package com.example.budgetwise.scrapper.messaging;
 
 
 
+import com.example.budgetwise.product.service.ProductIngestionService;
 import com.example.budgetwise.scrapper.dto.ScrapeResultDto;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -9,9 +10,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class CatalogConsumer {
 
-    private final CatalogIngestionService productInfoService;
+    private final ProductIngestionService productInfoService;
 
-    public CatalogConsumer(CatalogIngestionService productInfoService) {
+    public CatalogConsumer(ProductIngestionService productInfoService) {
         this.productInfoService = productInfoService;
     }
 
