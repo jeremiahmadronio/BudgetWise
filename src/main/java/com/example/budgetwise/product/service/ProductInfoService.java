@@ -33,54 +33,41 @@ public class ProductInfoService {
     private final DailyPriceRecordRepository dailyPriceRecordRepository;
 
 
-    /**
 
-     * This method implements a Batch Fetching Strategy to solve the N+1 Query Problem.
-     * Instead of querying the database inside a loop, it fetches related data (Markets, Tags)
-     * in bulk and merges them in memory.
-     * Retrieves a paginated list of products with aggregated details.
-     * @param pageable Pagination information (page number, size, sorting).
-     * @return A Page of {@link ProductTableResponse} containing product info, latest price, market counts, and tags.
+    /**
+     * Retrieves a paginated list of active products with optimized data aggregation.
+     * * PERFORMANCE STRATEGY:
+     * 1. Initial Pagination: Fetches only the base product info and latest price for the current page.
+     * 2. Batch Fetching: Collects IDs of the current page to perform bulk aggregate queries
+     * (counts) for markets and dietary tags in only two additional database round-trips.
+     * 3. In-Memory Mapping: Uses HashMaps for O(1) complexity when assembling the final DTO list.
+     * * This approach effectively solves the N+1 query problem and ensures the
+     * response time remains constant regardless of total record count.
+     * * @param pageable Sorting and pagination parameters from the frontend.
+     * @return A Page of ProductTableResponse with current market availability and tag counts.
      */
     @Transactional(readOnly = true)
     public Page<ProductTableResponse> displayProducts(Pageable pageable) {
-
-        //  Main Query: Fetch base product details (Name, Price, Status)
         Page<ProductTableResponse> productsPage = productInfoRepository.displayProductTable(pageable);
 
-        if(productsPage.isEmpty()) {
-            return Page.empty(pageable);
-        }
-        //  Extraction: Collect all Product IDs from the current page
-        List<Long> productIds = productsPage.stream()
-                .map(ProductTableResponse::getId)
-                .toList();
-        //  Batch Fetching: Retrieve related data for ALL IDs in single queries (High Performance)
-        List<ProductDietaryTagRepository.TagProjection> allTags = productDietaryTagRepository.findByProductIdIn(productIds);
-        List<DailyPriceRecordRepository.MarketCountProjection> marketCounts = dailyPriceRecordRepository.countMarketsByProductIds(productIds);
+        if(productsPage.isEmpty()) return Page.empty(pageable);
+        List<Long> productIds = productsPage.stream().map(ProductTableResponse::getId).toList();
 
-        //  In-Memory Mapping: Group Tags by ProductID for fast lookup
-        Map<Long, List<String>> allTagsMap = allTags.stream()
-                .collect(Collectors.groupingBy(
-                        ProductDietaryTagRepository.TagProjection::getProductId,
-                        Collectors.mapping(ProductDietaryTagRepository.TagProjection::getDietaryTag, Collectors.toList()
-
-                        )));
-        //  In-Memory Mapping: Map Market Counts by ProductID for fast lookup
+        List<DailyPriceRecordRepository.MarketCountProjection> marketCounts =
+                dailyPriceRecordRepository.countCurrentMarketsByProductIds(productIds);
+        List<ProductDietaryTagRepository.TagCountProjection> tagCounts =
+                productDietaryTagRepository.countTagsByProductIds(productIds);
         Map<Long, Integer> countsMap = marketCounts.stream()
-                .collect(Collectors.toMap(
-                        DailyPriceRecordRepository.MarketCountProjection::getProductId,
-                        p -> p.getTotalMarkets() != null ? p.getTotalMarkets().intValue() : 0                ));
+                .collect(Collectors.toMap(p -> p.getProductId(), p -> p.getTotalMarkets().intValue()));
 
+        Map<Long, Integer> tagsMap = tagCounts.stream()
+                .collect(Collectors.toMap(t -> t.getProductId(), t -> t.getTotalTags().intValue()));
 
-        // Assembly: Iterate through the page and inject the missing data
         productsPage.getContent().forEach(dto -> {
-            dto.setDietaryTags(allTagsMap.getOrDefault(dto.getId(), new ArrayList<>()));
             dto.setTotalMarkets(countsMap.getOrDefault(dto.getId(), 0));
+            dto.setTotalDietaryTags(tagsMap.getOrDefault(dto.getId(), 0));
         });
-
         return productsPage;
-
     }
 
 

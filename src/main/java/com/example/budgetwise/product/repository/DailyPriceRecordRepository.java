@@ -19,19 +19,15 @@ public interface DailyPriceRecordRepository extends JpaRepository<DailyPriceReco
         Long getTotalMarkets();
     }
 
-    /**
-     * Batch counts the number of markets for a list of products.
-     * Uses GROUP BY to return counts for multiple products in a single query.
-     *
-     * @param ids List of Product IDs to count markets for.
-     */
+
     @Query("""
-        SELECT 
-            r.productInfo.id AS productId,     
-            COUNT(r.marketLocation) AS totalMarkets
-        FROM DailyPriceRecord r 
-        WHERE r.productInfo.id IN :ids 
-        GROUP BY r.productInfo.id               
-    """)
-    List<MarketCountProjection> countMarketsByProductIds(@Param("ids") List<Long> ids);
+    SELECT dpr.productInfo.id AS productId, COUNT(DISTINCT dpr.marketLocation.id) AS totalMarkets
+    FROM DailyPriceRecord dpr
+    WHERE dpr.productInfo.id IN :productIds
+    AND dpr.priceReport.id = (SELECT MAX(r.id) FROM PriceReport r WHERE r.status = 'COMPLETED')
+    GROUP BY dpr.productInfo.id
+""")
+    List<MarketCountProjection> countCurrentMarketsByProductIds(@Param("productIds") List<Long> productIds);
+
+
 }

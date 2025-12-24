@@ -12,22 +12,23 @@ import java.util.List;
 public interface ProductDietaryTagRepository extends JpaRepository <ProductDietaryTag, Long>{
 
     /**
-     * Projection interface to map Product ID to Tag Name.
+     * Projection interface to avoid loading full Entity state during aggregation.
      */
-    interface TagProjection{
+    interface TagCountProjection {
         Long getProductId();
-        String getDietaryTag();
-
+        Long getTotalTags();
     }
 
     /**
-     * Batch retrieves dietary tags for a list of products.
-     * Uses JOIN to fetch the readable tag name.
-     *
-     * @param ids List of Product IDs to fetch tags for.
+     * Efficiently counts dietary tags for a batch of products.
+     * @param productIds List of IDs from the current page.
+     * @return List of product IDs paired with their respective tag counts.
      */
     @Query("""
-           SELECT pdt.productInfo.id AS productId,t.tagName AS dietaryTag            
-              FROM ProductDietaryTag pdt JOIN pdt.dietaryTag t WHERE pdt.productInfo.id IN :ids """)
-    List<TagProjection> findByProductIdIn(@Param("ids") List<Long> ids);
+        SELECT pdt.productInfo.id AS productId, COUNT(pdt.id) AS totalTags
+        FROM ProductDietaryTag pdt
+        WHERE pdt.productInfo.id IN :productIds
+        GROUP BY pdt.productInfo.id
+    """)
+    List<TagCountProjection> countTagsByProductIds(@Param("productIds") List<Long> productIds);
 }

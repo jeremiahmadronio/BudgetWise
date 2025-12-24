@@ -39,42 +39,16 @@ AND dpr.origin = :origin
                                                     @Param("productName") String productName,
                                                     @Param("origin") String origin);
 
-    /**
-     * Fetches the main product table data using a DTO projection.
-     * Logic:
-     * Filters only 'ACTIVE' products.
-     * Duplicate Fix: Uses a subquery MAX(sub.id) to ensure only the
-     * latest price record is retrieved per product. This prevents the product
-     * from appearing multiple times if it is sold in multiple markets.
-     *x
-     * @param pageable Pagination details.
-     * @return Page of ProductTableResponse.
-     */
+
     @Query("""
     SELECT new com.example.budgetwise.product.dto.ProductTableResponse(
-        p.id,
-        p.productName,
-        p.category,
-        d.origin,
-        p.localName,
-        d.unit,
-        p.status,
-        d.price,
-        0,               
-        null,
-        r.dateReported
+        p.id, p.productName, p.category, d.origin, p.localName, d.unit, p.status, d.price, 0, 0, r.dateReported
     )
     FROM ProductInfo p
     LEFT JOIN p.priceRecords d 
     LEFT JOIN d.priceReport r
-      
-    WHERE p.status = com.example.budgetwise.product.entity.ProductInfo.Status.ACTIVE
-    
-    AND (d.id IS NULL OR d.id = (
-        SELECT MAX(sub.id) 
-        FROM DailyPriceRecord sub 
-        WHERE sub.productInfo = p
-    ))
+    WHERE p.status = 'ACTIVE'
+    AND d.id = (SELECT MAX(d2.id) FROM DailyPriceRecord d2 WHERE d2.productInfo = p)
 """)
     Page<ProductTableResponse> displayProductTable(Pageable pageable);
 

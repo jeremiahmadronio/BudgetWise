@@ -23,6 +23,6 @@ public class ProductTableResponse {
     private ProductInfo.Status status;
     private Double price;
     private int totalMarkets;
-    private List<String> dietaryTags;
+    private int totalDietaryTags;
     private LocalDate lastUpdated;
 }
