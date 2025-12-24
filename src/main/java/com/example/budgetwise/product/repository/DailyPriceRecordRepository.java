@@ -2,6 +2,7 @@ package com.example.budgetwise.product.repository;
 
 
 import com.example.budgetwise.product.entity.DailyPriceRecord;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,5 +30,14 @@ public interface DailyPriceRecordRepository extends JpaRepository<DailyPriceReco
 """)
     List<MarketCountProjection> countCurrentMarketsByProductIds(@Param("productIds") List<Long> productIds);
 
+
+
+    @Query("""
+           SELECT d FROM DailyPriceRecord d 
+                      JOIN d.priceReport r 
+                      WHERE d.productInfo.id = :productId 
+                                 ORDER BY r.dateReported DESC, d.createdAt DESC
+           """)
+    List<DailyPriceRecord> findLatestByProductId(@Param("productId") Long productId, Pageable pageable);
 
 }

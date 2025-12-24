@@ -13,6 +13,7 @@ import com.example.budgetwise.product.repository.ProductDietaryTagRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,7 +85,7 @@ public class ProductInfoService {
     public ProductStatsResponse getProductStats() {
         long totalProducts = productInfoRepository.count();
         long activeProducts = productInfoRepository.countByStatus(ProductInfo.Status.ACTIVE);
-        long totalArchived = productInfoRepository.countByStatus(ProductInfo.Status.PENDING);
+        long totalArchived = productInfoRepository.countByStatus(ProductInfo.Status.INACTIVE);
         long productsWithTags = productInfoRepository.countProductWithDietaryTag();
 
         return new ProductStatsResponse(
@@ -131,7 +132,7 @@ public class ProductInfoService {
      * @return The clean DTO for display.
      */
     @Transactional(readOnly = true)
-    private ProductNewComersResponse mapToReviewDTO(ProductInfo product) {
+    protected ProductNewComersResponse mapToReviewDTO(ProductInfo product) {
         Double price = 0.0;
         int totalMarkets = 0;
         String origin = product.getLocalName();
@@ -210,7 +211,8 @@ public class ProductInfoService {
     }
 
     @Transactional(readOnly = true)
-    private UpdateNewComersRequest mapToManageDTO(ProductInfo product) {
+
+    protected UpdateNewComersRequest mapToManageDTO(ProductInfo product) {
         String origin = product.getPriceRecords().stream()
                 .findFirst()
                 .map(r -> r.getOrigin())
@@ -330,5 +332,35 @@ public class ProductInfoService {
                 product.getProductName(),
                 marketDetails
         );
+    }
+
+    /**
+     * Updates product metadata and its most recent price record in a single atomic transaction.
+     * <p>
+     * This method utilizes JPA's Dirty Checking mechanism. It fetches the existing product
+     * and the latest price record, then updates their fields. The changes are automatically
+     * flushed to the database upon successful completion of the transaction.
+     * </p>
+     *
+     * @param productId The unique identifier of the product to be updated.
+     * @param updateRequest DTO containing updated local name, status, price, and unit.
+     * @throws ResourcesNotFoundException if the product or its price record does not exist.
+     */
+    @Transactional
+    public void updateProductAndLatestPrice(Long productId, ProductUpdateRequest updateRequest) {
+        ProductInfo product = productInfoRepository.findById(productId)
+                .orElseThrow(() -> new ResourcesNotFoundException("Product", "id", productId));
+
+               product.setLocalName(updateRequest.localName());
+               product.setStatus(updateRequest.status());
+
+        DailyPriceRecord latestPriceRecord = dailyPriceRecordRepository.findLatestByProductId(productId, PageRequest.of(0, 1))
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ResourcesNotFoundException("DailyPriceRecord", "productId", productId));
+
+        latestPriceRecord.setPrice(updateRequest.price());
+        latestPriceRecord.setUnit(updateRequest.unit());
+
     }
 }

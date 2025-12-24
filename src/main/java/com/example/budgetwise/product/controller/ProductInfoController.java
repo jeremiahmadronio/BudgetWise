@@ -85,4 +85,14 @@ public class ProductInfoController {
     ) {
         return ResponseEntity.ok(productInfoService.getArchivedProducts(search, pageable));
     }
+
+    @PutMapping("/updateProduct/{id}")
+    public ResponseEntity<Void> updateProductInfo(
+            @PathVariable("id") Long id,
+            @RequestBody ProductUpdateRequest request) {
+        productInfoService.updateProductAndLatestPrice(id, request);
+        return ResponseEntity.noContent().build();
+
+
+    }
 }
