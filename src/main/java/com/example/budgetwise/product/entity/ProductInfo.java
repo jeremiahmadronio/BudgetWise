@@ -19,7 +19,12 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = {"product_name", "category"}),
 
-        })
+        },
+        indexes = {
+                @Index(name = "idx_product_name", columnList = "productName"),
+                @Index(name = "idx_product_status", columnList = "status")
+        }
+        )
 public class ProductInfo {
 
     @Id

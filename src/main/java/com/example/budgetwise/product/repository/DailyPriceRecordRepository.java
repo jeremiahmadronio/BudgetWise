@@ -20,6 +20,11 @@ public interface DailyPriceRecordRepository extends JpaRepository<DailyPriceReco
         Long getTotalMarkets();
     }
 
+    interface PriceProjection {
+        Long getProductId();
+        Double getPrice();
+    }
+
 
     @Query("""
     SELECT dpr.productInfo.id AS productId, COUNT(DISTINCT dpr.marketLocation.id) AS totalMarkets
@@ -31,7 +36,26 @@ public interface DailyPriceRecordRepository extends JpaRepository<DailyPriceReco
     List<MarketCountProjection> countCurrentMarketsByProductIds(@Param("productIds") List<Long> productIds);
 
 
-
+    @Query(value = """
+    WITH RankedPrices AS (
+        SELECT 
+            dpr.product_info_id as productId, 
+            dpr.price as price,
+            DENSE_RANK() OVER (
+                PARTITION BY dpr.product_info_id 
+                ORDER BY pr.date_reported DESC
+            ) as report_rank
+        FROM daily_price_record dpr
+        JOIN price_report pr ON dpr.price_report_id = pr.id
+        WHERE dpr.product_info_id IN :productIds
+        AND pr.status = 'COMPLETED'
+    )
+    SELECT productId, MAX(price) as price
+    FROM RankedPrices
+    WHERE report_rank = 2
+    GROUP BY productId
+""", nativeQuery = true)
+    List<PriceProjection> findPreviousPricesByProductIds(@Param("productIds") List<Long> productIds);
     @Query("""
            SELECT d FROM DailyPriceRecord d 
                       JOIN d.priceReport r 

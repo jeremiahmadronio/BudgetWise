@@ -49,11 +49,10 @@ public class MarketLocationController {
         return ResponseEntity.ok(response);
     }
 
-    @PutMapping("/updateStatus")
-    public ResponseEntity<UpdateMarketStatus> updateMarketStatus(@RequestBody UpdateMarketStatus status){
-        UpdateMarketStatus response = marketLocationService.updateMarketStatus(status);
-        return ResponseEntity.ok(response);
-
+    @PatchMapping("/bulk-status")
+    public ResponseEntity<String> updateMarketStatuses(@RequestBody UpdateMarketStatus request) {
+        marketLocationService.updateMarketStatuses(request);
+        return ResponseEntity.ok("Successfully updated status for " + request.ids().size() + " market(s).");
     }
 
 
@@ -77,5 +76,26 @@ public class MarketLocationController {
         MarketLocation updatedMarket = marketLocationService.updateMarket(id, request);
 
         return ResponseEntity.ok(updatedMarket);
+    }
+
+
+    /**
+     * Retrieves detailed information for a single market location.
+     * PERFORMANCE STRATEGY:
+     * 1. Constructor Projection: Uses JPQL 'new' expression to map database results directly
+     * to MarketViewResponse. This bypasses the Hibernate Persistence Context (L1 Cache),
+     * reducing memory overhead.
+     * 2. Optimized Aggregation: Includes a Scalar Subquery to count unique products per market
+     * directly at the database level, avoiding the need to load large collection associations.
+     * 3. Read-Only Transaction: Annotated with (readOnly = true) to allow the database to
+     * optimize for concurrent read performance.
+     *
+     * @param id The unique identifier of the market.
+     * @return A {@link MarketViewResponse} containing market details and product statistics.
+     * @throws RuntimeException if no market is found with the specified ID.
+     */
+    @GetMapping("/view/{id}")
+    public ResponseEntity<MarketViewResponse> getMarketDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(marketLocationService.getMarketById(id));
     }
 }

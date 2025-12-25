@@ -50,24 +50,41 @@ public class ProductInfoService {
     @Transactional(readOnly = true)
     public Page<ProductTableResponse> displayProducts(Pageable pageable) {
         Page<ProductTableResponse> productsPage = productInfoRepository.displayProductTable(pageable);
-
         if(productsPage.isEmpty()) return Page.empty(pageable);
+
         List<Long> productIds = productsPage.stream().map(ProductTableResponse::getId).toList();
 
-        List<DailyPriceRecordRepository.MarketCountProjection> marketCounts =
-                dailyPriceRecordRepository.countCurrentMarketsByProductIds(productIds);
-        List<ProductDietaryTagRepository.TagCountProjection> tagCounts =
-                productDietaryTagRepository.countTagsByProductIds(productIds);
-        Map<Long, Integer> countsMap = marketCounts.stream()
-                .collect(Collectors.toMap(p -> p.getProductId(), p -> p.getTotalMarkets().intValue()));
+        // 1. Batch Fetching (Existing)
+        List<DailyPriceRecordRepository.MarketCountProjection> marketCounts = dailyPriceRecordRepository.countCurrentMarketsByProductIds(productIds);
+        List<ProductDietaryTagRepository.TagCountProjection> tagCounts = productDietaryTagRepository.countTagsByProductIds(productIds);
 
-        Map<Long, Integer> tagsMap = tagCounts.stream()
-                .collect(Collectors.toMap(t -> t.getProductId(), t -> t.getTotalTags().intValue()));
+        // 2. NEW: Batch Fetch Previous Prices
+        List<DailyPriceRecordRepository.PriceProjection> previousPrices = dailyPriceRecordRepository.findPreviousPricesByProductIds(productIds);
 
+        // 3. Mapping
+        Map<Long, Integer> countsMap = marketCounts.stream().collect(Collectors.toMap(p -> p.getProductId(), p -> p.getTotalMarkets().intValue()));
+        Map<Long, Integer> tagsMap = tagCounts.stream().collect(Collectors.toMap(t -> t.getProductId(), t -> t.getTotalTags().intValue()));
+        Map<Long, Double> prevPriceMap = previousPrices.stream().collect(Collectors.toMap(p -> p.getProductId(), p -> p.getPrice()));
+
+        // 4. Assembly & Trend Logic
         productsPage.getContent().forEach(dto -> {
             dto.setTotalMarkets(countsMap.getOrDefault(dto.getId(), 0));
             dto.setTotalDietaryTags(tagsMap.getOrDefault(dto.getId(), 0));
+
+            Double currentPrice = dto.getPrice();
+            Double prevPrice = prevPriceMap.get(dto.getId());
+
+            if (prevPrice != null) {
+                dto.setPreviousPrice(prevPrice);
+                if (currentPrice > prevPrice) dto.setPriceTrend("UP");
+                else if (currentPrice < prevPrice) dto.setPriceTrend("DOWN");
+                else dto.setPriceTrend("STABLE");
+            } else {
+                dto.setPreviousPrice(0.0);
+                dto.setPriceTrend("NEW"); // First time price record
+            }
         });
+
         return productsPage;
     }
 

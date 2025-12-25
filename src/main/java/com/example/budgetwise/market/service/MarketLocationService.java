@@ -73,28 +73,28 @@ public class MarketLocationService {
     }
 
     /**
-     * Updates the status of a market location.
-     *
-     * @param status DTO containing the market ID and new status.
-     * @return The updated UpdateMarketStatus DTO.
-     * @throws IllegalArgumentException if the market does not exist.
+     * Updates the status for one or more market locations.
+     * PERFORMANCE STRATEGY:
+     * - Uses a single @Modifying JPQL query to update all IDs in one database round-trip.
+     * - Updates the 'updatedAt' timestamp directly in the database.
+     * - Avoids memory overhead by not loading MarketLocation entities.
+     * * @param request DTO containing a list of market IDs and the target status.
      */
     @Transactional
-    public UpdateMarketStatus updateMarketStatus(UpdateMarketStatus status) {
+    public void updateMarketStatuses(UpdateMarketStatus request) {
+        if (request.ids() == null || request.ids().isEmpty()) {
+            throw new IllegalArgumentException("Market IDs list cannot be empty.");
+        }
 
-        MarketLocation marketLocation = marketLocationRepository.findById(status.id())
-                .orElseThrow(() -> new IllegalArgumentException("Market with ID " + status.id() + " does not exist."));
+        int updatedCount = marketLocationRepository.updateMarketStatusBulk(
+                request.newStatus(),
+                request.ids()
+        );
 
-        marketLocation.setStatus(status.newStatus());
-        marketLocation.setUpdatedAt(LocalDateTime.now());
-        marketLocationRepository.save(marketLocation);
-
-        return status;
-
-
-
+        if (updatedCount == 0) {
+            throw new RuntimeException("No markets were updated. Check if the IDs are valid.");
+        }
     }
-
 
     /**
      * Creates and persists a new Market Location.
@@ -169,5 +169,13 @@ public class MarketLocationService {
         return marketLocationRepository.save(market);
     }
 
+
+
+
+    @Transactional(readOnly = true)
+    public MarketViewResponse getMarketById(Long id) {
+        return marketLocationRepository.findMarketViewById(id)
+                .orElseThrow(() -> new RuntimeException("Market with ID " + id + " not found"));
+    }
 
 }

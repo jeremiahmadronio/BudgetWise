@@ -5,10 +5,12 @@ package com.example.budgetwise.market.repository;
 import com.example.budgetwise.market.dto.MarketDetail;
 import com.example.budgetwise.market.dto.MarketProductsResponse;
 import com.example.budgetwise.market.dto.MarketTableResponse;
+import com.example.budgetwise.market.dto.MarketViewResponse;
 import com.example.budgetwise.market.entity.MarketLocation;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -118,4 +120,33 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
     List<MarketDetail> findMarketDetailsByProductId(@Param("productId") Long productId);
 
 
+
+    @Query("""
+        SELECT new com.example.budgetwise.market.dto.MarketViewResponse(
+            m.id, 
+            m.marketLocation, 
+            m.type, 
+            m.status, 
+            m.latitude, 
+            m.longitude,
+            (SELECT COUNT(DISTINCT dpr.productInfo.id) 
+             FROM DailyPriceRecord dpr 
+             WHERE dpr.marketLocation = m),
+            m.openingTime, 
+            m.closingTime, 
+            m.ratings, 
+            m.description, 
+            m.createdAt,        
+            m.updatedAt
+        )
+        FROM MarketLocation m
+        WHERE m.id = :id
+    """)
+    Optional<MarketViewResponse> findMarketViewById(@Param("id") Long id);
+
+
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE MarketLocation m SET m.status = :status, m.updatedAt = CURRENT_TIMESTAMP WHERE m.id IN :ids")
+    int updateMarketStatusBulk(@Param("status") MarketLocation.Status status, @Param("ids") List<Long> ids);
 }

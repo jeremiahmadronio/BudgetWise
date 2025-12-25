@@ -43,12 +43,13 @@ AND dpr.origin = :origin
 
     @Query("""
     SELECT new com.example.budgetwise.product.dto.ProductTableResponse(
-        p.id, p.productName, p.category, d.origin, p.localName, d.unit, p.status, d.price, 0, 0, r.dateReported
+        p.id, p.productName, p.category, d.origin, p.localName, d.unit, p.status, d.price, 
+        0.0, 'NEW', 0, 0, r.dateReported
     )
     FROM ProductInfo p
     LEFT JOIN p.priceRecords d 
     LEFT JOIN d.priceReport r
-    WHERE p.status = 'ACTIVE'
+    WHERE p.status = com.example.budgetwise.product.entity.ProductInfo.Status.ACTIVE
     AND d.id = (SELECT MAX(d2.id) FROM DailyPriceRecord d2 WHERE d2.productInfo = p)
 """)
     Page<ProductTableResponse> displayProductTable(Pageable pageable);
