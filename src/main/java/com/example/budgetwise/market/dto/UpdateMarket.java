@@ -22,6 +22,9 @@ public record UpdateMarket(
         @NotNull(message = "Longitude is required")
         Double longitude,
 
+        @NotNull(message = "Ratings is required")
+        Double ratings,
+
         LocalDateTime openingTime,
         LocalDateTime closingTime,
 

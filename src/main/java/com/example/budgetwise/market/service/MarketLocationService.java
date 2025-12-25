@@ -37,7 +37,7 @@ public class MarketLocationService {
         long totalWetMarkets = marketLocationRepository.countByMarketType(com.example.budgetwise.market.entity.MarketLocation.Type.WET_MARKET);
         long totalSupermarkets = marketLocationRepository.countByMarketType(com.example.budgetwise.market.entity.MarketLocation.Type.SUPERMARKET);
 
-        return new MarketStatsResponse(totalMarkets, activeMarkets, totalWetMarkets, totalSupermarkets);
+        return new MarketStatsResponse(totalMarkets, activeMarkets, totalSupermarkets,totalWetMarkets);
 
     }
 
@@ -161,6 +161,7 @@ public class MarketLocationService {
         market.setOpeningTime(request.openingTime());
         market.setClosingTime(request.closingTime());
         market.setDescription(request.description());
+        market.setRatings(request.ratings());
 
 
         market.setUpdatedAt(LocalDateTime.now());
