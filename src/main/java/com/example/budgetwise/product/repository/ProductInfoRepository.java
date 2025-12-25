@@ -9,6 +9,7 @@ import com.example.budgetwise.product.entity.ProductInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -153,4 +154,9 @@ AND dpr.origin = :origin
     List<MarketDetail> findMarketDetailsByProductId(@Param("productId") Long productId);
 
 
+
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE ProductInfo p SET p.status = :status WHERE p.id IN :ids")
+    int updateStatusForIds(@Param("status") ProductInfo.Status status, @Param("ids") List<Long> ids);
 }

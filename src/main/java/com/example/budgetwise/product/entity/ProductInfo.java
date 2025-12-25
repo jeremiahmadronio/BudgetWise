@@ -37,7 +37,7 @@ public class ProductInfo {
     @Column(length = 250)
     private String localName;
 
-    public enum Status { ACTIVE, INACTIVE,PENDING }
+        public enum Status { ACTIVE, INACTIVE,PENDING,UNRECOGNIZED };
     @Enumerated(EnumType.STRING)
     @Column(length = 20,nullable = false)
     private Status status;

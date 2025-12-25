@@ -95,4 +95,11 @@ public class ProductInfoController {
 
 
     }
+
+
+    @PatchMapping("/bulk-status")
+    public ResponseEntity<String> bulkUpdateStatus(@RequestBody BulkUpdateProductStatus request) {
+        productInfoService.bulkUpdateStatus(request);
+        return ResponseEntity.ok("Successfully updated status for selected products.");
+    }
 }

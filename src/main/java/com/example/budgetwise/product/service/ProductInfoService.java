@@ -363,4 +363,34 @@ public class ProductInfoService {
         latestPriceRecord.setUnit(updateRequest.unit());
 
     }
+
+
+    /**
+     * Executes a high-performance bulk update on product statuses.
+     * * DESIGN RATIONALE:
+     * 1. Uses a custom @Modifying JPQL query to perform the update in a single database round-trip.
+     * 2. Avoids the 'Select-Before-Update' anti-pattern by updating directly via IDs.
+     * 3. Enforces data integrity by validating the status string against the ProductInfo.Status enum.
+     * * PERFORMANCE IMPACT:
+     * - O(1) Database Trip: Regardless of the number of IDs, only one SQL statement is executed.
+     * - Reduced Memory Footprint: Does not load Entity objects into the Hibernate Persistence Context.
+     * * @param request DTO containing a List of Product IDs and the target status string.
+     * @throws IllegalArgumentException if the status string does not match any valid Enum constant.
+     */
+    @Transactional
+    public void bulkUpdateStatus(BulkUpdateProductStatus request) {
+        if (request.ids() == null || request.ids().isEmpty()) {
+            throw new IllegalArgumentException("IDs list cannot be empty!");
+        }
+
+        try {
+          ProductInfo.Status status = ProductInfo.Status.valueOf(request.newStatus().toUpperCase());
+
+            int updatedCount = productInfoRepository.updateStatusForIds(status, request.ids());
+
+            System.out.println("Bulk Update Success: " + updatedCount + " products updated to " + status);
+        } catch (IllegalArgumentException e) {
+            throw new RuntimeException("Invalid status provided: " + request.newStatus());
+        }
+    }
 }
