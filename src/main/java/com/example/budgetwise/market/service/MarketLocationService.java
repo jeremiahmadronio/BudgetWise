@@ -6,6 +6,7 @@ import com.example.budgetwise.exception.ResourcesNotFoundException;
 import com.example.budgetwise.market.dto.*;
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.MarketLocationRepository;
+import com.example.budgetwise.market.repository.projection.MarketProductRow;
 import com.example.budgetwise.product.entity.ProductInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -56,20 +57,36 @@ public class MarketLocationService {
 
 
     /**
-     * Fetches product details for a given market with read-only transaction semantics.
-     *
-     * @param marketId The ID of the market.
-     * @return A list of product projections.
-     * @throws IllegalArgumentException if the market does not exist.
+     * Fetches all products associated with a specific market location.
+     * * <p>Refactored Logic:</p>
+     * <ul>
+     * <li>Uses Interface Projection (MarketProductRow) for high-performance data fetching.</li>
+     * <li>Eliminated SQL correlated subqueries for counting to prevent O(N) database overhead.</li>
+     * <li>Calculates 'totalProducts' on the application side (Java) to reduce DB load.</li>
+     * </ul>
+     * * @param marketId The unique identifier of the market.
+     * @return A list of {@link MarketProductPriceView} containing product details and price history.
      */
     @Transactional(readOnly = true)
-    public List<MarketProductsResponse> displayMarketsProducts(Long marketId ) {
-        boolean exist = marketLocationRepository.existsById(marketId);
-        if(!exist){
-            throw new IllegalArgumentException("Market with ID " + marketId + " does not exist.");
-        }
+    public List<MarketProductPriceView> getMarketProducts(Long marketId) {
+        List<MarketProductRow> rawData = marketLocationRepository.fetchRawMarketProducts(marketId);
 
-        return marketLocationRepository.displayProductByMarketId(marketId);
+        if (rawData.isEmpty()) return List.of();
+
+        long total = rawData.size();
+
+        return rawData.stream()
+                .map(row -> new MarketProductPriceView(
+                        row.getMarketId(),
+                        row.getMarketName(),
+                        row.getMarketType(),
+                        total,
+                        row.getProductName(),
+                        row.getProductCategory(),
+                        row.getProductPrice(),
+                        row.getDateRecorded()
+                ))
+                .toList();
     }
 
     /**
@@ -135,27 +152,32 @@ public class MarketLocationService {
 
 
     /**
-     * Updates an existing Market Location.
-     * * @param id The ID of the market to update.
-     * @param request The new data containing updates.
-     * @return The updated entity.
-     * @throws RuntimeException if the market ID is not found (Change to custom exception later).
-     * @throws IllegalArgumentException if the new name is already taken by another market.
+     * Updates an existing market location based on the provided ID and request data.
+     * <p>
+     * This method performs the following steps:
+     * 1. Verifies the existence of the market.
+     * 2. Checks for name uniqueness (excluding the current market being updated).
+     * 3. Maps new values to the entity.
+     * 4. Updates the 'updatedAt' timestamp.
+     * 5. Persists the changes to the database.
+     * </p>
+     *
+     * @param id      The unique identifier of the market to be updated.
+     * @param request The DTO containing updated information (name, coordinates, etc.).
+     * @throws RuntimeException         if the market with the given ID does not exist.
+     * @throws IllegalArgumentException  if the new market name is already taken by another record.
      */
     @Transactional
-    public MarketLocation updateMarket(Long id, UpdateMarket request) {
-
+    public void updateMarket(Long id, UpdateMarket request) {
         MarketLocation market = marketLocationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Market not found with id: " + id));
 
-
         if (marketLocationRepository.existsByMarketLocationAndIdNot(request.marketLocation(), id)) {
-            throw new IllegalArgumentException("Market name already exists on another record.");
+            throw new IllegalArgumentException("Market name '" + request.marketLocation() + "' already exists.");
         }
 
         market.setMarketLocation(request.marketLocation());
         market.setType(request.type());
-        market.setStatus(request.status());
         market.setLatitude(request.latitude());
         market.setLongitude(request.longitude());
         market.setOpeningTime(request.openingTime());
@@ -166,8 +188,7 @@ public class MarketLocationService {
 
         market.setUpdatedAt(LocalDateTime.now());
 
-
-        return marketLocationRepository.save(market);
+        marketLocationRepository.save(market);
     }
 
 

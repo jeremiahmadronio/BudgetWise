@@ -18,7 +18,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "daily_price_record")
+@Table(name = "daily_price_record",
+                       indexes = {
+                                @Index(name = "idx_dpr_market_location", columnList = "market_location_id"),
+                                @Index(name = "idx_dpr_product_info", columnList = "product_info_id"),
+                                @Index(name = "idx_dpr_price_report", columnList = "price_report_id")
+                                        })
+
 public class DailyPriceRecord {
 
     @Id

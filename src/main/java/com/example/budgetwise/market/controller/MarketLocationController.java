@@ -40,12 +40,14 @@ public class MarketLocationController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/marketProducts/{marketId}")
-    public ResponseEntity<List<MarketProductsResponse>> displayMarketsProducts(
-            @PathVariable("marketId") Long marketId ) {
-        List<MarketProductsResponse> response = marketLocationService.displayMarketsProducts(marketId);
-        System.out.println("Type ng Count: " + response.get(0).totalProducts().getClass().getName());
-        System.out.println("Type ng Price: " + response.get(0).productPrice().getClass().getName());
+    @GetMapping("/market-products/{marketId}")
+    public ResponseEntity<List<MarketProductPriceView>> getMarketProducts(@PathVariable Long marketId) {
+        List<MarketProductPriceView> response = marketLocationService.getMarketProducts(marketId);
+
+        if (response.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
         return ResponseEntity.ok(response);
     }
 
@@ -67,17 +69,11 @@ public class MarketLocationController {
                 .status(HttpStatus.CREATED)
                 .body(createdMarket);
     }
-
     @PutMapping("/{id}")
-    public ResponseEntity<MarketLocation> updateMarket(
-            @PathVariable Long id,
-            @RequestBody @Valid UpdateMarket request) {
-
-        MarketLocation updatedMarket = marketLocationService.updateMarket(id, request);
-
-        return ResponseEntity.ok(updatedMarket);
+    public ResponseEntity<Void> update(@PathVariable Long id, @Valid @RequestBody UpdateMarket request) {
+        marketLocationService.updateMarket(id, request);
+        return ResponseEntity.noContent().build();
     }
-
 
     /**
      * Retrieves detailed information for a single market location.
