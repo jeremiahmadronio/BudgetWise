@@ -65,22 +65,28 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
 
 
     @Query("""
-        SELECT 
-            m.id AS marketId, 
-            m.marketLocation AS marketName, 
-            m.type AS marketType,
-            p.productName AS productName, 
-            p.category AS productCategory, 
-            dpr.price AS productPrice, 
-            pr.dateReported AS dateRecorded
-        FROM MarketLocation m
-        JOIN m.dailyPriceRecords dpr
-        JOIN dpr.productInfo p
-        JOIN dpr.priceReport pr
-        WHERE m.id = :marketId
-        ORDER BY p.productName ASC
-    """)
-    List<MarketProductRow> fetchRawMarketProducts(@Param("marketId") Long marketId);
+    SELECT 
+        m.id AS marketId, 
+        m.marketLocation AS marketName, 
+        m.type AS marketType,
+        p.productName AS productName, 
+        p.category AS productCategory, 
+        dpr.price AS productPrice, 
+        pr.dateReported AS dateRecorded
+    FROM DailyPriceRecord dpr
+    JOIN dpr.marketLocation m
+    JOIN dpr.productInfo p
+    JOIN dpr.priceReport pr
+    WHERE m.id = :marketId
+    AND dpr.id = (
+        SELECT MAX(d2.id) 
+        FROM DailyPriceRecord d2 
+        WHERE d2.marketLocation.id = m.id 
+        AND d2.productInfo.id = p.id
+    )
+    ORDER BY p.productName ASC
+""")
+    List<MarketProductRow> fetchLatestMarketProducts(@Param("marketId") Long marketId);
 
 
 

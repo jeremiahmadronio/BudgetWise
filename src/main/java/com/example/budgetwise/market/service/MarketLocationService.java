@@ -57,30 +57,28 @@ public class MarketLocationService {
 
 
     /**
-     * Fetches all products associated with a specific market location.
-     * * <p>Refactored Logic:</p>
-     * <ul>
-     * <li>Uses Interface Projection (MarketProductRow) for high-performance data fetching.</li>
-     * <li>Eliminated SQL correlated subqueries for counting to prevent O(N) database overhead.</li>
-     * <li>Calculates 'totalProducts' on the application side (Java) to reduce DB load.</li>
-     * </ul>
-     * * @param marketId The unique identifier of the market.
-     * @return A list of {@link MarketProductPriceView} containing product details and price history.
+     * Fetches ONLY the latest price record for each product in a specific market.
+     * Optimized to prevent loading historical data which causes performance lag.
+     *
+     * @param marketId Unique ID of the market
+     * @return List of latest product prices
      */
     @Transactional(readOnly = true)
-    public List<MarketProductPriceView> getMarketProducts(Long marketId) {
-        List<MarketProductRow> rawData = marketLocationRepository.fetchRawMarketProducts(marketId);
+    public List<MarketProductPriceView> getLatestMarketProducts(Long marketId) {
+        // 1. Fetch only the latest entry per product (Subquery filtered)
+        List<MarketProductRow> rawData = marketLocationRepository.fetchLatestMarketProducts(marketId);
 
         if (rawData.isEmpty()) return List.of();
 
-        long total = rawData.size();
+        long distinctProductCount = rawData.size();
 
+        // 2. Map results to the View Record
         return rawData.stream()
                 .map(row -> new MarketProductPriceView(
                         row.getMarketId(),
                         row.getMarketName(),
                         row.getMarketType(),
-                        total,
+                        distinctProductCount,
                         row.getProductName(),
                         row.getProductCategory(),
                         row.getProductPrice(),
@@ -88,7 +86,6 @@ public class MarketLocationService {
                 ))
                 .toList();
     }
-
     /**
      * Updates the status for one or more market locations.
      * PERFORMANCE STRATEGY:

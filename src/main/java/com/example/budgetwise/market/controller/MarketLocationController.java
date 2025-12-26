@@ -42,7 +42,7 @@ public class MarketLocationController {
 
     @GetMapping("/market-products/{marketId}")
     public ResponseEntity<List<MarketProductPriceView>> getMarketProducts(@PathVariable Long marketId) {
-        List<MarketProductPriceView> response = marketLocationService.getMarketProducts(marketId);
+        List<MarketProductPriceView> response = marketLocationService.getLatestMarketProducts(marketId);
 
         if (response.isEmpty()) {
             return ResponseEntity.noContent().build();
