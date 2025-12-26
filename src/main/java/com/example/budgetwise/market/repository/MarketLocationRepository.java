@@ -2,6 +2,7 @@ package com.example.budgetwise.market.repository;
 
 
 
+import com.example.budgetwise.analytics.dto.MarketLookup;
 import com.example.budgetwise.market.dto.MarketDetail;
 import com.example.budgetwise.market.dto.MarketProductsResponse;
 import com.example.budgetwise.market.dto.MarketTableResponse;
@@ -24,6 +25,9 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
 
 
     List<MarketLocation> findByMarketLocationIn(List<String> marketLocations);
+
+    @Query("SELECT m.id AS id, m.marketLocation AS marketName, m.type AS type FROM MarketLocation m ORDER BY m.marketLocation ASC")
+    List<MarketLookup> findAllMarketLookups();
 
     @Query("""
             SELECT COUNT(m) FROM MarketLocation m

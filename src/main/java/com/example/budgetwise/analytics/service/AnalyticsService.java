@@ -1,10 +1,10 @@
 package com.example.budgetwise.analytics.service;
 
-import com.example.budgetwise.analytics.dto.PriceHistoryPoint;
-import com.example.budgetwise.analytics.dto.ProductAnalyticsResponse;
-import com.example.budgetwise.analytics.dto.SummaryStatsProjection; // Refactored import
+import com.example.budgetwise.analytics.dto.*;
+import com.example.budgetwise.analytics.repository.projection.SummaryStatsProjection; // Refactored import
 import com.example.budgetwise.analytics.repository.AnalyticsRepository;
 import com.example.budgetwise.market.repository.MarketLocationRepository;
+import com.example.budgetwise.product.repository.ProductInfoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +16,12 @@ public class AnalyticsService {
 
     private final AnalyticsRepository recordRepository;
     private final MarketLocationRepository marketRepository;
+    private final ProductInfoRepository productInfoRepository;
 
-    public AnalyticsService(AnalyticsRepository recordRepository, MarketLocationRepository marketRepository) {
+    public AnalyticsService(AnalyticsRepository recordRepository, MarketLocationRepository marketRepository,ProductInfoRepository productInfoRepository) {
         this.recordRepository = recordRepository;
         this.marketRepository = marketRepository;
+        this.productInfoRepository = productInfoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -80,5 +82,24 @@ public class AnalyticsService {
         if (percentageFluctuation < 5) return "Low";
         if (percentageFluctuation < 15) return "Medium";
         return "High";
+    }
+
+
+    /**
+     * Aggregates all available market and product lookups for frontend discovery.
+     * * <p>Performance Optimization:</p>
+     * <ul>
+     * <li>Uses interface-based projections to fetch only necessary ID and Name fields.</li>
+     * <li>Prevents "God Repository" anti-pattern by delegating queries to their respective feature modules.</li>
+     * <li>Returns a combined {@link DiscoveryResponse} to minimize initial load API calls from the UI.</li>
+     * </ul>
+     * * @return A {@link DiscoveryResponse} containing lists of {@link MarketLookup} and {@link ProductLookup}.
+     */
+    @Transactional(readOnly = true)
+    public DiscoveryResponse getDiscoveryData() {
+        List<MarketLookup> markets = marketRepository.findAllMarketLookups();
+        List<ProductLookup> products = productInfoRepository.findAllProductLookups();
+
+        return new DiscoveryResponse(markets, products);
     }
 }

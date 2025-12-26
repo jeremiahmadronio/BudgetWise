@@ -1,4 +1,4 @@
-package com.example.budgetwise.analytics.dto;
+package com.example.budgetwise.analytics.repository.projection;
 
 /**
  * Interface-based projection for cleaner analytics aggregation.

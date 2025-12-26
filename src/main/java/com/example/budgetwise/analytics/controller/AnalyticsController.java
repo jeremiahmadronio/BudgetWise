@@ -2,6 +2,7 @@ package com.example.budgetwise.analytics.controller;
 
 
 
+import com.example.budgetwise.analytics.dto.DiscoveryResponse;
 import com.example.budgetwise.analytics.dto.ProductAnalyticsResponse;
 import com.example.budgetwise.analytics.service.AnalyticsService;
 import org.springframework.http.ResponseEntity;
@@ -33,5 +34,12 @@ public class AnalyticsController {
             @RequestParam(value = "days", defaultValue = "30") int days // Default 30 days
     ) {
         return ResponseEntity.ok(analyticsService.getProductAnalytics(productName, marketId, days));
+    }
+
+
+
+    @GetMapping("/discovery")
+    public ResponseEntity<DiscoveryResponse> getDiscovery() {
+        return ResponseEntity.ok(analyticsService.getDiscoveryData());
     }
 }

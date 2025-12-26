@@ -3,7 +3,7 @@ package com.example.budgetwise.analytics.repository;
 
 
 import com.example.budgetwise.analytics.dto.PriceHistoryPoint;
-import com.example.budgetwise.analytics.dto.SummaryStatsProjection;
+import com.example.budgetwise.analytics.repository.projection.SummaryStatsProjection;
 import com.example.budgetwise.product.entity.DailyPriceRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

@@ -2,6 +2,7 @@ package com.example.budgetwise.product.repository;
 
 
 
+import com.example.budgetwise.analytics.dto.ProductLookup;
 import com.example.budgetwise.market.dto.MarketDetail;
 import com.example.budgetwise.product.dto.ArchiveTableResponse;
 import com.example.budgetwise.product.dto.ProductTableResponse;
@@ -24,6 +25,10 @@ public interface ProductInfoRepository extends JpaRepository <ProductInfo, Long>
     Optional<ProductInfo> findByCategoryAndProductName(String category, String productName);
 
     Optional<ProductInfo> findById(Long id);
+
+
+    @Query("SELECT p.id AS id, p.productName AS productName, p.category AS category FROM ProductInfo p ORDER BY p.productName ASC")
+    List<ProductLookup> findAllProductLookups();
     /**
      * Checks if a product exists based on composite unique constraints.
      */
