@@ -22,7 +22,8 @@ import java.time.LocalDateTime;
                        indexes = {
                                 @Index(name = "idx_dpr_market_location", columnList = "market_location_id"),
                                 @Index(name = "idx_dpr_product_info", columnList = "product_info_id"),
-                                @Index(name = "idx_dpr_price_report", columnList = "price_report_id")
+                                @Index(name = "idx_dpr_price_report", columnList = "price_report_id"),
+                               @Index(name = "idx_dpr_market_product_latest", columnList = "product_info_id, market_location_id, id DESC")
                                         })
 
 public class DailyPriceRecord {
