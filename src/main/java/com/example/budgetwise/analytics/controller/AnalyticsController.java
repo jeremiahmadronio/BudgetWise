@@ -3,10 +3,13 @@ package com.example.budgetwise.analytics.controller;
 
 
 import com.example.budgetwise.analytics.dto.DiscoveryResponse;
+import com.example.budgetwise.analytics.dto.MarketComparisonChart;
 import com.example.budgetwise.analytics.dto.ProductAnalyticsResponse;
 import com.example.budgetwise.analytics.service.AnalyticsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/analytics")
@@ -41,5 +44,30 @@ public class AnalyticsController {
     @GetMapping("/discovery")
     public ResponseEntity<DiscoveryResponse> getDiscovery() {
         return ResponseEntity.ok(analyticsService.getDiscoveryData());
+    }
+
+
+    @GetMapping("/market-comparison")
+    public ResponseEntity<List<MarketComparisonChart>> getMarketComparison(
+            @RequestParam String productName,
+            @RequestParam Long marketId,
+            @RequestParam(defaultValue = "7") int days) {
+
+
+        if (productName == null || productName.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (days <= 0) {
+            return ResponseEntity.badRequest().build();
+        }
+
+                List<MarketComparisonChart> comparisonData = analyticsService.getMarketComparison(productName, marketId, days);
+
+        if (comparisonData.isEmpty()) {
+            return ResponseEntity.noContent().build();
+        }
+
+        return ResponseEntity.ok(comparisonData);
     }
 }

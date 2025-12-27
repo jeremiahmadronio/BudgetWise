@@ -3,11 +3,16 @@ package com.example.budgetwise.analytics.service;
 import com.example.budgetwise.analytics.dto.*;
 import com.example.budgetwise.analytics.repository.projection.SummaryStatsProjection; // Refactored import
 import com.example.budgetwise.analytics.repository.AnalyticsRepository;
+import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.MarketLocationRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -24,66 +29,63 @@ public class AnalyticsService {
         this.productInfoRepository = productInfoRepository;
     }
 
+
     @Transactional(readOnly = true)
     public ProductAnalyticsResponse getProductAnalytics(String productName, Long marketId, int days) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(days - 1);
 
-        LocalDate startDate = LocalDate.now().minusDays(days);
-        List<PriceHistoryPoint> history;
-        Double min = 0.0, max = 0.0, avg = 0.0;
+        Double lastKnownPrice = recordRepository.findLatestPriceBefore(productName, marketId, startDate)
+                .orElse(0.0);
+
+        List<PriceHistoryPoint> rawHistory;
         String marketLabel;
 
-        // Refactored to use Projection Interface instead of Object[]
-        SummaryStatsProjection stats;
-
         if (marketId != null && marketId > 0) {
-            // Specific Market
             marketLabel = marketRepository.findById(marketId)
-                    .map(m -> m.getMarketLocation())
-                    .orElse("Unknown Market");
-
-            history = recordRepository.findHistoryByMarket(productName, marketId, startDate);
-            stats = recordRepository.findStatsByMarket(productName, marketId, startDate).orElse(null);
-
+                    .map(MarketLocation::getMarketLocation).orElse("Unknown Market");
+            rawHistory = recordRepository.findHistoryByMarket(productName, marketId, startDate);
         } else {
-            // National Average
             marketLabel = "National Average";
-            history = recordRepository.findHistoryNationalAverage(productName, startDate);
-            stats = recordRepository.findStatsNational(productName, startDate).orElse(null);
+            rawHistory = recordRepository.findHistoryNationalAverage(productName, startDate);
         }
 
-        // Logic Check: Map stats safely if projection is present
+        SummaryStatsProjection stats = recordRepository.findCombinedStats(productName, marketId, startDate).orElse(null);
+
+        Map<LocalDate, Double> priceMap = rawHistory.stream()
+                .collect(Collectors.toMap(PriceHistoryPoint::date, PriceHistoryPoint::price));
+
+        List<PriceHistoryPoint> filledHistory = new ArrayList<>();
+        for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            Double priceToday = priceMap.get(date);
+            if (priceToday != null) {
+                lastKnownPrice = priceToday;
+            }
+            double cleanPrice = Math.round(lastKnownPrice * 100.0) / 100.0;
+            filledHistory.add(new PriceHistoryPoint(date, cleanPrice));
+        }
+
+        double min = 0.0, max = 0.0, avg = 0.0;
         if (stats != null && stats.getMinPrice() != null) {
             min = stats.getMinPrice();
             max = stats.getMaxPrice();
-            avg = stats.getAvgPrice();
+            avg = Math.round(stats.getAvgPrice() * 100.0) / 100.0;
         }
 
-        avg = Math.round(avg * 100.0) / 100.0;
-
-        String volatility = calculateVolatility(min, max, avg);
-
         return new ProductAnalyticsResponse(
-                productName,
-                marketLabel,
-                min,
-                max,
-                avg,
-                volatility,
-                history
+                productName, marketLabel, min, max, avg,
+                calculateVolatility(min, max, avg),
+                filledHistory
         );
     }
 
     private String calculateVolatility(Double min, Double max, Double avg) {
-        if (avg == 0) return "Low";
-
-        double diff = max - min;
-        double percentageFluctuation = (diff / avg) * 100;
-
-        if (percentageFluctuation < 5) return "Low";
-        if (percentageFluctuation < 15) return "Medium";
+        if (avg == null || avg == 0) return "Low";
+        double fluctuation = ((max - min) / avg) * 100;
+        if (fluctuation < 5) return "Low";
+        if (fluctuation < 15) return "Medium";
         return "High";
     }
-
 
     /**
      * Aggregates all available market and product lookups for frontend discovery.
@@ -101,5 +103,28 @@ public class AnalyticsService {
         List<ProductLookup> products = productInfoRepository.findAllProductLookups();
 
         return new DiscoveryResponse(markets, products);
+    }
+
+
+
+    @Transactional(readOnly = true)
+    public List<MarketComparisonChart> getMarketComparison(String productName, Long marketId, int days) {
+        LocalDate startDate = LocalDate.now().minusDays(days - 1);
+
+        List<MarketComparisonChart> rawData = recordRepository.findMarketComparisonData(
+                productName, marketId, startDate
+        );
+
+        if (rawData.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return rawData.stream()
+                .map(item -> new MarketComparisonChart(
+                        item.marketName(),
+                        Math.round(item.averagePrice() * 100.0) / 100.0,
+                        item.isTargetMarket()
+                ))
+                .collect(Collectors.toList());
     }
 }

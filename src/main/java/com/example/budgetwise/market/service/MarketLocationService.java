@@ -2,6 +2,7 @@ package com.example.budgetwise.market.service;
 
 
 
+import com.example.budgetwise.analytics.dto.MarketComparisonChart;
 import com.example.budgetwise.exception.ResourcesNotFoundException;
 import com.example.budgetwise.market.dto.*;
 import com.example.budgetwise.market.entity.MarketLocation;
@@ -14,6 +15,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -196,5 +198,10 @@ public class MarketLocationService {
         return marketLocationRepository.findMarketViewById(id)
                 .orElseThrow(() -> new RuntimeException("Market with ID " + id + " not found"));
     }
+
+
+
+
+
 
 }

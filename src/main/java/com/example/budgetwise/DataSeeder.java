@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
@@ -44,50 +45,32 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        if (marketRepository.count() > 0) {
-            System.out.println("Database already has data. Skipping Seeder.");
+        System.out.println("Checking for missing price data...");
+
+        // 1. Siguraduhin na may Markets at Products muna (Initialization)
+        SourceData sourceData = objectMapper.readValue(RAW_JSON_DATA, SourceData.class);
+        seedMarketsAndProducts(sourceData);
+
+        // 2. Alamin kung hanggang kailan ang data sa DB
+        LocalDate today = LocalDate.now();
+        // Kung walang data, mag-start tayo 30 days ago. Kung mayroon, start sa day after the latest record.
+        LocalDate lastDateInDb = reportRepository.findLatestReportDate().orElse(today.minusDays(31));
+
+        if (!lastDateInDb.isBefore(today)) {
+            System.out.println("Database is already up to date (Latest: " + lastDateInDb + "). Skipping Seeder.");
             return;
         }
 
-        System.out.println("Initializing REAL-WORLD Data Seeding...");
+        System.out.println("Seeding missing dates from " + lastDateInDb.plusDays(1) + " to " + today);
 
-        //Parse JSON
-        SourceData sourceData = objectMapper.readValue(RAW_JSON_DATA, SourceData.class);
+        List<MarketLocation> allMarkets = marketRepository.findAll();
+        Map<String, ProductInfo> productMap = productRepository.findAll().stream()
+                .collect(Collectors.toMap(p -> p.getProductName() + "|" + p.getCategory(), p -> p, (a, b) -> a));
 
-        //Save Markets
-        List<MarketLocation> savedMarkets = new ArrayList<>();
-        for (String marketName : sourceData.covered_markets) {
-            MarketLocation market = new MarketLocation();
-            market.setMarketLocation(marketName);
-            if (marketName.contains("Supermarket") || marketName.contains("Mall") || marketName.contains("Complex")) {
-                market.setType(MarketLocation.Type.SUPERMARKET);
-            } else {
-                market.setType(MarketLocation.Type.WET_MARKET);
-            }
-            market.setStatus(MarketLocation.Status.ACTIVE);
-            market.setRatings(4.0 + new Random().nextDouble());
-            savedMarkets.add(marketRepository.save(market));
-        }
-
-        //Save Products
-        Map<String, ProductInfo> productMap = new HashMap<>();
-        for (PriceItem item : sourceData.price_data) {
-            String key = item.commodity + "|" + item.category;
-            if (!productMap.containsKey(key)) {
-                ProductInfo p = new ProductInfo();
-                p.setProductName(item.commodity);
-                p.setCategory(item.category);
-                p.setStatus(ProductInfo.Status.ACTIVE);
-                productMap.put(key, productRepository.save(p));
-            }
-        }
-
-        //Generate 30 Days of History
-        LocalDate today = LocalDate.now();
         Random random = new Random();
 
-        for (int i = 30; i >= 0; i--) {
-            LocalDate date = today.minusDays(i);
+        // 3. Loop mula sa huling date sa DB hanggang NGAYON
+        for (LocalDate date = lastDateInDb.plusDays(1); !date.isAfter(today); date = date.plusDays(1)) {
 
             PriceReport report = new PriceReport();
             report.setDateReported(date);
@@ -98,15 +81,19 @@ public class DataSeeder implements CommandLineRunner {
 
             List<DailyPriceRecord> batchRecords = new ArrayList<>();
 
-            for (MarketLocation market : savedMarkets) {
+            for (MarketLocation market : allMarkets) {
+                // 10% chance na walang data ang isang market sa isang araw (para realistic)
                 if (random.nextDouble() < 0.10) continue;
 
                 for (PriceItem item : sourceData.price_data) {
                     ProductInfo product = productMap.get(item.commodity + "|" + item.category);
+                    if (product == null) continue;
 
-                    double variance = (random.nextDouble() * 0.10) - 0.05;
-                    double marketMarkup = (market.getType() == MarketLocation.Type.SUPERMARKET) ? 1.10 : 1.0;
-                    double finalPrice = item.price * (1.0 + variance) * marketMarkup;
+                    // REALISTIC TREND LOGIC:
+                    // Nagdagdag ako ng konting random fluctuation para hindi flat line ang itsura sa graph
+                    double fluctuation = (random.nextDouble() * 4.0) - 2.0; // +/- 2 pesos random
+                    double marketMarkup = (market.getType() == MarketLocation.Type.SUPERMARKET) ? 1.15 : 1.0;
+                    double finalPrice = (item.price + fluctuation) * marketMarkup;
 
                     DailyPriceRecord record = new DailyPriceRecord();
                     record.setPrice(Math.round(finalPrice * 100.0) / 100.0);
@@ -120,12 +107,37 @@ public class DataSeeder implements CommandLineRunner {
                 }
             }
             recordRepository.saveAll(batchRecords);
-            System.out.println("Processed Date: " + date + " (" + batchRecords.size() + " records)");
+            System.out.println("Successfully seeded: " + date + " (" + batchRecords.size() + " records)");
         }
 
-        System.out.println("DATA SEEDING COMPLETE!");
+        System.out.println("DATA SEEDING COMPLETE! Your analytics should now be updated up to " + today);
     }
 
+    // Helper method para malinis ang run method mo
+    private void seedMarketsAndProducts(SourceData sourceData) {
+        if (marketRepository.count() == 0) {
+            for (String marketName : sourceData.covered_markets) {
+                MarketLocation m = new MarketLocation();
+                m.setMarketLocation(marketName);
+                m.setType(marketName.contains("Supermarket") ? MarketLocation.Type.SUPERMARKET : MarketLocation.Type.WET_MARKET);
+                m.setStatus(MarketLocation.Status.ACTIVE);
+                m.setRatings(4.0 + new Random().nextDouble());
+                marketRepository.save(m);
+            }
+        }
+
+        if (productRepository.count() == 0) {
+            for (PriceItem item : sourceData.price_data) {
+                if (!productRepository.existsByProductName(item.commodity)) {
+                    ProductInfo p = new ProductInfo();
+                    p.setProductName(item.commodity);
+                    p.setCategory(item.category);
+                    p.setStatus(ProductInfo.Status.ACTIVE);
+                    productRepository.save(p);
+                }
+            }
+        }
+    }
     private static class SourceData {
         public String status;
         public String date_processed;
