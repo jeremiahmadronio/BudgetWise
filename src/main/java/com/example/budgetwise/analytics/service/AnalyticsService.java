@@ -5,16 +5,14 @@ import com.example.budgetwise.analytics.repository.projection.SummaryStatsProjec
 import com.example.budgetwise.analytics.repository.AnalyticsRepository;
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.MarketLocationRepository;
+import com.example.budgetwise.product.repository.PriceReportRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
-import java.util.List;
 
 @Service
 public class AnalyticsService {
@@ -22,11 +20,13 @@ public class AnalyticsService {
     private final AnalyticsRepository recordRepository;
     private final MarketLocationRepository marketRepository;
     private final ProductInfoRepository productInfoRepository;
+    private final PriceReportRepository reportRepository;
 
-    public AnalyticsService(AnalyticsRepository recordRepository, MarketLocationRepository marketRepository,ProductInfoRepository productInfoRepository) {
+    public AnalyticsService(AnalyticsRepository recordRepository, MarketLocationRepository marketRepository, ProductInfoRepository productInfoRepository, PriceReportRepository reportRepository) {
         this.recordRepository = recordRepository;
         this.marketRepository = marketRepository;
         this.productInfoRepository = productInfoRepository;
+        this.reportRepository = reportRepository;
     }
 
 
@@ -106,7 +106,6 @@ public class AnalyticsService {
     }
 
 
-
     @Transactional(readOnly = true)
     public List<MarketComparisonChart> getMarketComparison(String productName, Long marketId, int days) {
         LocalDate startDate = LocalDate.now().minusDays(days - 1);
@@ -126,5 +125,52 @@ public class AnalyticsService {
                         item.isTargetMarket()
                 ))
                 .collect(Collectors.toList());
+    }
+
+
+    @Transactional(readOnly = true)
+    public GainerDeclinerResponse getMarketTopMovements(Long marketId, int days) {
+        LocalDate endDate = reportRepository.findLatestReportDate().orElse(LocalDate.now());
+        LocalDate startDate = endDate.minusDays(days);
+
+        List<PriceMovement> currentData = recordRepository.findMarketPricesOnDate(marketId, endDate);
+        List<PriceMovement> pastData = recordRepository.findMarketPricesOnDate(marketId, startDate);
+
+        Map<String, Double> pastPriceMap = pastData.stream()
+                .collect(Collectors.toMap(PriceMovement::productName, PriceMovement::currentPrice));
+
+        List<PriceMovement> movements = currentData.stream()
+                .filter(curr -> pastPriceMap.containsKey(curr.productName()))
+                .map(curr -> {
+                    double oldPrice = pastPriceMap.get(curr.productName());
+                    double newPrice = curr.currentPrice();
+                    if (oldPrice <= 0) return null; // Iwas division by zero
+
+                    double change = Math.round(((newPrice - oldPrice) / oldPrice * 100) * 100.0) / 100.0;
+
+                    return new PriceMovement(
+                            curr.productName(),
+                            Math.round(newPrice * 100.0) / 100.0,
+                            Math.round(oldPrice * 100.0) / 100.0,
+                            change,
+                            (change > 0) ? "UP" : (change < 0) ? "DOWN" : "STABLE"
+                    );
+                })
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        List<PriceMovement> gainers = movements.stream()
+                .filter(m -> m.percentageChange() > 0)
+                .sorted(Comparator.comparing(PriceMovement::percentageChange).reversed())
+                .limit(5)
+                .toList();
+
+        List<PriceMovement> decliners = movements.stream()
+                .filter(m -> m.percentageChange() < 0)
+                .sorted(Comparator.comparing(PriceMovement::percentageChange))
+                .limit(5)
+                .toList();
+
+        return new GainerDeclinerResponse(gainers, decliners);
     }
 }

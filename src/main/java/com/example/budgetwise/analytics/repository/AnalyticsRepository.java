@@ -2,6 +2,7 @@ package com.example.budgetwise.analytics.repository;
 
 import com.example.budgetwise.analytics.dto.MarketComparisonChart;
 import com.example.budgetwise.analytics.dto.PriceHistoryPoint;
+import com.example.budgetwise.analytics.dto.PriceMovement;
 import com.example.budgetwise.analytics.repository.projection.SummaryStatsProjection;
 import com.example.budgetwise.product.entity.DailyPriceRecord;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -33,7 +34,7 @@ public interface AnalyticsRepository extends JpaRepository<DailyPriceRecord, Lon
             @Param("startDate") LocalDate startDate
     );
 
-  
+
     @Query("""
         SELECT new com.example.budgetwise.analytics.dto.PriceHistoryPoint(
             dpr.priceReport.dateReported,
@@ -106,5 +107,26 @@ public interface AnalyticsRepository extends JpaRepository<DailyPriceRecord, Lon
             @Param("productName") String productName,
             @Param("targetMarketId") Long targetMarketId,
             @Param("startDate") LocalDate startDate
+    );
+
+
+    @Query("""
+    SELECT new com.example.budgetwise.analytics.dto.PriceMovement(
+        p.productName,
+        AVG(dpr.price),
+        0.0D, 
+        0.0D, 
+        ''
+    )
+    FROM DailyPriceRecord dpr
+    JOIN dpr.productInfo p
+    WHERE dpr.marketLocation.id = :marketId 
+      AND dpr.priceReport.dateReported = :targetDate
+      AND dpr.priceReport.status = 'COMPLETED'
+    GROUP BY p.productName
+""")
+    List<PriceMovement> findMarketPricesOnDate(
+            @Param("marketId") Long marketId,
+            @Param("targetDate") LocalDate targetDate
     );
 }

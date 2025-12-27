@@ -14,4 +14,5 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
     boolean existsByDateReported(LocalDate dateReported);
     @Query("SELECT MAX(pr.dateReported) FROM PriceReport pr")
     Optional<LocalDate> findLatestReportDate();
+
 }
