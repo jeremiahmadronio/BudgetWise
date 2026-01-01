@@ -19,7 +19,7 @@ public class ProductTableResponse {
     private ProductInfo.Status status;
     private Double price;
     private Double previousPrice;
-    private String priceTrend;
+
     private int totalMarkets;
     private int totalDietaryTags;
     private LocalDate lastUpdated;

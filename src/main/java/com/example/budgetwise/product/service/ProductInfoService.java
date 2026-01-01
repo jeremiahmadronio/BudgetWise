@@ -74,15 +74,7 @@ public class ProductInfoService {
             Double currentPrice = dto.getPrice();
             Double prevPrice = prevPriceMap.get(dto.getId());
 
-            if (prevPrice != null) {
-                dto.setPreviousPrice(prevPrice);
-                if (currentPrice > prevPrice) dto.setPriceTrend("UP");
-                else if (currentPrice < prevPrice) dto.setPriceTrend("DOWN");
-                else dto.setPriceTrend("STABLE");
-            } else {
-                dto.setPreviousPrice(0.0);
-                dto.setPriceTrend("NEW"); // First time price record
-            }
+
         });
 
         return productsPage;

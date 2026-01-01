@@ -51,7 +51,7 @@ AND dpr.origin = :origin
     @Query("""
     SELECT new com.example.budgetwise.product.dto.ProductTableResponse(
         p.id, p.productName, p.category, d.origin, p.localName, d.unit, p.status, d.price, 
-        0.0, 'NEW', 0, 0, r.dateReported
+        0.0, 0, 0, r.dateReported
     )
     FROM ProductInfo p
     LEFT JOIN p.priceRecords d 
