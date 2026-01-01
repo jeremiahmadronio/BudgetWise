@@ -11,6 +11,7 @@ import com.example.budgetwise.product.entity.ProductInfo;
 import com.example.budgetwise.product.repository.DailyPriceRecordRepository;
 import com.example.budgetwise.product.repository.ProductDietaryTagRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
+import com.example.budgetwise.product.repository.Projection.MarketPriceProjection;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -269,29 +270,24 @@ public class ProductInfoService {
     }
 
 
-    
-    /**
-     * Retrieves comprehensive product details along with all markets where the product is available.
-     *
-     * This method fetches:
-     * - Basic product information (ID and name)
-     * - List of market locations selling this product (with operating hours and type)
-     *
-     * @param productId the unique identifier of the product
-     * @return ProductMarketDetailResponse containing product info and associated market details
-     * @throws ResourcesNotFoundException if no product exists with the given ID
-     *
-     * @example
-     * // Returns product "Rice" with markets: "Market A", "Market B", etc.
-     * getProductMarketDetails(123L);
-     */
     @Transactional(readOnly = true)
     public ProductMarketDetailResponse getProductMarketDetails(Long productId) {
         ProductInfo product = productInfoRepository.findById(productId)
                 .orElseThrow(() -> new ResourcesNotFoundException("Product", "id", productId));
 
+        List<MarketPriceProjection> results = productInfoRepository.findLatestMarketPricesByProductId(productId);
 
-        List<MarketDetail> marketDetails = productInfoRepository.findMarketDetailsByProductId(productId);
+        List<MarketDetail> marketDetails = results.stream()
+                .map(row -> new MarketDetail(
+                        row.getMarketId(),
+                        row.getMarketName(),
+                        MarketLocation.Type.valueOf(row.getMarketType()),
+                        row.getMarketOpeningTime() != null ? row.getMarketOpeningTime().toLocalDateTime() : null,
+                        row.getMarketClosingTime() != null ? row.getMarketClosingTime().toLocalDateTime() : null,
+                        row.getCurrentPrice() != null ? row.getCurrentPrice() : 0.0,
+                        row.getUnit()
+                ))
+                .toList();
 
         return new ProductMarketDetailResponse(
                 product.getId(),
@@ -299,7 +295,6 @@ public class ProductInfoService {
                 marketDetails
         );
     }
-
     /**
      * Updates product metadata and its most recent price record in a single atomic transaction.
      * <p>

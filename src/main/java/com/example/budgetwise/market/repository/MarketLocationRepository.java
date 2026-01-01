@@ -100,25 +100,7 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
     boolean existsByMarketLocationAndIdNot(String marketLocation, Long id);
 
 
-    /**
-     * Finds all unique market locations that sell a specific product.
-     *
-     * Query Navigation:
-     * 1. Starts from ProductInfo (the product)
-     * 2. Joins to PriceRecords (prices for that product)
-     * 3. Joins to MarketLocation (markets with those prices)
-     * 4. Returns distinct market details
-     * This prevents duplicate markets if a product has multiple price records
-     * at the same location (e.g., price history updates).
-     *Returns empty list if product has no price records or markets
-     */
-    @Query("SELECT DISTINCT NEW com.example.budgetwise.market.dto.MarketDetail(" +
-            "ml.id, ml.marketLocation , ml.type, ml.openingTime, ml.closingTime) " +
-            "FROM ProductInfo p " +
-            "JOIN p.priceRecords pr " +
-            "JOIN pr.marketLocation ml " +
-            "WHERE p.id = :productId")
-    List<MarketDetail> findMarketDetailsByProductId(@Param("productId") Long productId);
+  
 
 
 

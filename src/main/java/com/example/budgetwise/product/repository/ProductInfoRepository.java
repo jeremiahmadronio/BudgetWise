@@ -7,6 +7,7 @@ import com.example.budgetwise.market.dto.MarketDetail;
 import com.example.budgetwise.product.dto.ArchiveTableResponse;
 import com.example.budgetwise.product.dto.ProductTableResponse;
 import com.example.budgetwise.product.entity.ProductInfo;
+import com.example.budgetwise.product.repository.Projection.MarketPriceProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -141,27 +142,26 @@ AND dpr.origin = :origin
     );
 
 
-    /**
-     * Finds all unique market locations that sell a specific product.
-     *
-     * Query Navigation:
-     * 1. Starts from ProductInfo (the product)
-     * 2. Joins to PriceRecords (prices for that product)
-     * 3. Joins to MarketLocation (markets with those prices)
-     * 4. Returns distinct market details
-     * This prevents duplicate markets if a product has multiple price records
-     * at the same location (e.g., price history updates).
-     *Returns empty list if product has no price records or markets
-     */
-    @Query("SELECT DISTINCT NEW com.example.budgetwise.market.dto.MarketDetail(" +
-            "ml.id, ml.marketLocation , ml.type, ml.openingTime, ml.closingTime) " +
-            "FROM ProductInfo p " +
-            "JOIN p.priceRecords pr " +
-            "JOIN pr.marketLocation ml " +
-            "WHERE p.id = :productId")
-    List<MarketDetail> findMarketDetailsByProductId(@Param("productId") Long productId);
-
-
+    @Query(value = """
+        SELECT 
+            ml.id AS marketId, 
+            ml.market_location AS marketName, 
+            ml.type AS marketType, 
+            ml.opening_time AS marketOpeningTime, 
+            ml.closing_time AS marketClosingTime, 
+            dpr.price AS currentPrice, 
+            dpr.unit AS unit
+        FROM market_location ml
+        JOIN daily_price_record dpr ON ml.id = dpr.market_location_id
+        WHERE dpr.product_info_id = :productId
+        AND dpr.id IN (
+            SELECT MAX(id) 
+            FROM daily_price_record 
+            WHERE product_info_id = :productId 
+            GROUP BY market_location_id
+        )
+        """, nativeQuery = true)
+    List<MarketPriceProjection> findLatestMarketPricesByProductId(@Param("productId") Long productId);
 
 
     @Modifying(clearAutomatically = true)

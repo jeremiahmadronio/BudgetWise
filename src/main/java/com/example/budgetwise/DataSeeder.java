@@ -1,6 +1,5 @@
 package com.example.budgetwise;
 
-
 import com.example.budgetwise.product.entity.DailyPriceRecord;
 import com.example.budgetwise.product.entity.PriceReport;
 import com.example.budgetwise.product.entity.ProductInfo;
@@ -15,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,10 +25,10 @@ public class DataSeeder implements CommandLineRunner {
     private final ProductInfoRepository productRepository;
     private final PriceReportRepository reportRepository;
     private final DailyPriceRecordRepository recordRepository;
-
-    // MANUAL INSTANTIATION:
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    // CONFIGURATION: Number of months of historical data to generate
+    private static final int MONTHS_TO_SEED = 5;
 
     public DataSeeder(MarketLocationRepository marketRepository,
                       ProductInfoRepository productRepository,
@@ -38,40 +38,62 @@ public class DataSeeder implements CommandLineRunner {
         this.productRepository = productRepository;
         this.reportRepository = reportRepository;
         this.recordRepository = recordRepository;
-
-
     }
 
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        System.out.println("Checking for missing price data...");
+        System.out.println("Initializing Data Seeder...");
 
-        // 1. Siguraduhin na may Markets at Products muna (Initialization)
+        // 1. Initialize Markets and Products if empty
         SourceData sourceData = objectMapper.readValue(RAW_JSON_DATA, SourceData.class);
         seedMarketsAndProducts(sourceData);
 
-        // 2. Alamin kung hanggang kailan ang data sa DB
         LocalDate today = LocalDate.now();
-        // Kung walang data, mag-start tayo 30 days ago. Kung mayroon, start sa day after the latest record.
-        LocalDate lastDateInDb = reportRepository.findLatestReportDate().orElse(today.minusDays(31));
+        LocalDate targetStartDate = today.minusMonths(MONTHS_TO_SEED);
+
+        // === FIX: FORCE RESET IF DATA IS INSUFFICIENT ===
+        // Check if we have enough historical data (approx 120 days for 4 months)
+        long currentRecordCount = reportRepository.count();
+
+        if (currentRecordCount > 0 && currentRecordCount < 120) {
+            System.out.println("⚠️ Insufficient historical data detected (" + currentRecordCount + " days only).");
+            System.out.println("⚠️ PURGING existing price data to regenerate full 5-month trend...");
+
+            // Delete all records to ensure a clean, consistent linear trend
+            recordRepository.deleteAll();
+            reportRepository.deleteAll();
+
+            System.out.println("✅ Purge complete. Starting fresh seeding...");
+        }
+
+        // 2. Determine Start Date
+        // If DB is empty (after purge), start from 5 months ago.
+        // If DB has data (more than 120 days), start from the last record.
+        LocalDate lastDateInDb = reportRepository.findLatestReportDate().orElse(targetStartDate.minusDays(1));
 
         if (!lastDateInDb.isBefore(today)) {
-            System.out.println("Database is already up to date (Latest: " + lastDateInDb + "). Skipping Seeder.");
+            System.out.println("Database is already fully updated up to " + today + ". Skipping Seeder.");
             return;
         }
 
-        System.out.println("Seeding missing dates from " + lastDateInDb.plusDays(1) + " to " + today);
+        // Start seeding from the day AFTER the last recorded date
+        LocalDate startDate = lastDateInDb.plusDays(1);
 
+        System.out.println("Seeding history from " + startDate + " to " + today);
+
+        // ... (RETAIN THE REST OF THE CODE BELOW - NO CHANGES NEEDED) ...
+        // ... Pre-fetch entities ...
         List<MarketLocation> allMarkets = marketRepository.findAll();
         Map<String, ProductInfo> productMap = productRepository.findAll().stream()
                 .collect(Collectors.toMap(p -> p.getProductName() + "|" + p.getCategory(), p -> p, (a, b) -> a));
 
         Random random = new Random();
+        long totalDaysSpan = ChronoUnit.DAYS.between(targetStartDate, today);
+        if (totalDaysSpan == 0) totalDaysSpan = 1;
 
-        // 3. Loop mula sa huling date sa DB hanggang NGAYON
-        for (LocalDate date = lastDateInDb.plusDays(1); !date.isAfter(today); date = date.plusDays(1)) {
-
+        for (LocalDate date = startDate; !date.isAfter(today); date = date.plusDays(1)) {
+            // ... (SAME LOOP CODE AS BEFORE) ...
             PriceReport report = new PriceReport();
             report.setDateReported(date);
             report.setDateProcessed(date.atStartOfDay());
@@ -81,19 +103,22 @@ public class DataSeeder implements CommandLineRunner {
 
             List<DailyPriceRecord> batchRecords = new ArrayList<>();
 
+            long daysPassed = ChronoUnit.DAYS.between(targetStartDate, date);
+            double timeProgress = (double) daysPassed / totalDaysSpan;
+
             for (MarketLocation market : allMarkets) {
-                // 10% chance na walang data ang isang market sa isang araw (para realistic)
-                if (random.nextDouble() < 0.10) continue;
+                if (random.nextDouble() < 0.15) continue;
 
                 for (PriceItem item : sourceData.price_data) {
                     ProductInfo product = productMap.get(item.commodity + "|" + item.category);
                     if (product == null) continue;
 
-                    // REALISTIC TREND LOGIC:
-                    // Nagdagdag ako ng konting random fluctuation para hindi flat line ang itsura sa graph
-                    double fluctuation = (random.nextDouble() * 4.0) - 2.0; // +/- 2 pesos random
+                    double trendFactor = 0.90 + (0.10 * timeProgress);
                     double marketMarkup = (market.getType() == MarketLocation.Type.SUPERMARKET) ? 1.15 : 1.0;
-                    double finalPrice = (item.price + fluctuation) * marketMarkup;
+                    double volatility = (random.nextDouble() * 0.06) - 0.03;
+
+                    double basePrice = item.price * trendFactor;
+                    double finalPrice = basePrice * marketMarkup * (1.0 + volatility);
 
                     DailyPriceRecord record = new DailyPriceRecord();
                     record.setPrice(Math.round(finalPrice * 100.0) / 100.0);
@@ -107,13 +132,13 @@ public class DataSeeder implements CommandLineRunner {
                 }
             }
             recordRepository.saveAll(batchRecords);
-            System.out.println("Successfully seeded: " + date + " (" + batchRecords.size() + " records)");
+
+            if (date.getDayOfMonth() == 1 || date.getDayOfMonth() == 15) {
+                System.out.println(">> Seeded: " + date + " (Progress: " + String.format("%.0f", timeProgress * 100) + "%)");
+            }
         }
-
-        System.out.println("DATA SEEDING COMPLETE! Your analytics should now be updated up to " + today);
+        System.out.println("DATA SEEDING COMPLETE! Historical trend data is now available.");
     }
-
-    // Helper method para malinis ang run method mo
     private void seedMarketsAndProducts(SourceData sourceData) {
         if (marketRepository.count() == 0) {
             for (String marketName : sourceData.covered_markets) {
@@ -138,6 +163,8 @@ public class DataSeeder implements CommandLineRunner {
             }
         }
     }
+
+    // DTOs for JSON Mapping
     private static class SourceData {
         public String status;
         public String date_processed;
@@ -153,6 +180,7 @@ public class DataSeeder implements CommandLineRunner {
         public double price;
     }
 
+    // JSON Data Source
     private static final String RAW_JSON_DATA = """
     {
         "status": "Success",

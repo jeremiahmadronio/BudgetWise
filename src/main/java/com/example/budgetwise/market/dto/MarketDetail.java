@@ -9,6 +9,8 @@ public record MarketDetail(
         String marketName,
         MarketLocation.Type marketType,
         LocalDateTime marketOpeningTime,
-        LocalDateTime marketClosingTime
+        LocalDateTime marketClosingTime,
+        double currentPrice, 
+        String unit
 ){
 }
