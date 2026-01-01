@@ -134,20 +134,24 @@ public class AnalyticsService {
         LocalDate endDate = reportRepository.findLatestReportDate().orElse(LocalDate.now());
         LocalDate startDate = endDate.minusDays(days);
 
+        // 1. Fetch Data
         List<PriceMovement> currentData = recordRepository.findMarketPricesOnDate(marketId, endDate);
         List<PriceMovement> pastData = recordRepository.findMarketPricesOnDate(marketId, startDate);
 
         Map<String, Double> pastPriceMap = pastData.stream()
                 .collect(Collectors.toMap(PriceMovement::productName, PriceMovement::currentPrice));
 
-        List<PriceMovement> movements = currentData.stream()
+        List<PriceMovement> allMovements = currentData.stream()
                 .filter(curr -> pastPriceMap.containsKey(curr.productName()))
                 .map(curr -> {
                     double oldPrice = pastPriceMap.get(curr.productName());
                     double newPrice = curr.currentPrice();
-                    if (oldPrice <= 0) return null; // Iwas division by zero
+
+                    if (oldPrice <= 0) return null;
 
                     double change = Math.round(((newPrice - oldPrice) / oldPrice * 100) * 100.0) / 100.0;
+
+
 
                     return new PriceMovement(
                             curr.productName(),
@@ -157,24 +161,36 @@ public class AnalyticsService {
                             (change > 0) ? "UP" : (change < 0) ? "DOWN" : "STABLE"
                     );
                 })
-                .filter(Objects::nonNull)
+                .filter(Objects::nonNull) // Remove nulls from 'oldPrice <= 0' check
                 .collect(Collectors.toList());
 
-        List<PriceMovement> gainers = movements.stream()
+        int totalGainers = (int) allMovements.stream()
                 .filter(m -> m.percentageChange() > 0)
-                .sorted(Comparator.comparing(PriceMovement::percentageChange).reversed())
-                .limit(5)
-                .toList();
+                .count();
 
-        List<PriceMovement> decliners = movements.stream()
+        int totalDecliners = (int) allMovements.stream()
                 .filter(m -> m.percentageChange() < 0)
-                .sorted(Comparator.comparing(PriceMovement::percentageChange))
+                .count();
+
+        List<PriceMovement> topGainers = allMovements.stream()
+                .filter(m -> m.percentageChange() > 0)
+                .sorted(Comparator.comparing(PriceMovement::percentageChange).reversed()) // Highest % first
                 .limit(5)
                 .toList();
 
-        return new GainerDeclinerResponse(gainers, decliners, movements.size(), pastData.size() - movements.size());
-    }
+        List<PriceMovement> topDecliners = allMovements.stream()
+                .filter(m -> m.percentageChange() < 0)
+                .sorted(Comparator.comparing(PriceMovement::percentageChange)) // Most negative first
+                .limit(5)
+                .toList();
 
+        return new GainerDeclinerResponse(
+                topGainers,
+                topDecliners,
+                totalGainers,
+                totalDecliners
+        );
+    }
 
 
 }
