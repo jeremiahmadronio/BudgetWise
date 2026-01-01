@@ -111,22 +111,46 @@ public interface AnalyticsRepository extends JpaRepository<DailyPriceRecord, Lon
 
 
     @Query("""
-    SELECT new com.example.budgetwise.analytics.dto.PriceMovement(
-        p.productName,
-        AVG(dpr.price),
-        0.0D, 
-        0.0D, 
-        ''
-    )
-    FROM DailyPriceRecord dpr
-    JOIN dpr.productInfo p
-    WHERE dpr.marketLocation.id = :marketId 
-      AND dpr.priceReport.dateReported = :targetDate
-      AND dpr.priceReport.status = 'COMPLETED'
-    GROUP BY p.productName
-""")
+        SELECT new com.example.budgetwise.analytics.dto.PriceMovement(
+            p.productName, 
+            AVG(dpr.price), 
+            0.0D, 0.0D, ''
+        )
+        FROM DailyPriceRecord dpr
+        JOIN dpr.productInfo p
+        WHERE dpr.marketLocation.id = :marketId
+          AND dpr.priceReport.dateReported = (
+              SELECT MAX(pr.dateReported) 
+              FROM PriceReport pr 
+              WHERE pr.dateReported <= :targetDate 
+                AND pr.status = 'COMPLETED'
+          )
+        GROUP BY p.productName
+    """)
     List<PriceMovement> findMarketPricesOnDate(
             @Param("marketId") Long marketId,
             @Param("targetDate") LocalDate targetDate
     );
+
+    @Query("""
+        SELECT AVG(ABS(dpr.price - national.avgPrice) / national.avgPrice) * 100
+        FROM DailyPriceRecord dpr
+        JOIN (SELECT d2.productInfo.id as pid, AVG(d2.price) as avgPrice 
+              FROM DailyPriceRecord d2 WHERE d2.priceReport.dateReported = :date GROUP BY d2.productInfo.id) national
+        ON dpr.productInfo.id = national.pid
+        WHERE dpr.marketLocation.id = :marketId AND dpr.priceReport.dateReported = :date
+    """)
+    Optional<Double> calculateMarketVariance(@Param("marketId") Long marketId, @Param("date") LocalDate date);
+
+    @Query("""
+        SELECT COUNT(dpr) FROM DailyPriceRecord dpr
+        WHERE dpr.marketLocation.id = :marketId 
+        AND dpr.priceReport.dateReported = :date
+        AND dpr.price > (SELECT AVG(d2.price) * 1.3 FROM DailyPriceRecord d2 
+                         WHERE d2.productInfo.id = dpr.productInfo.id AND d2.priceReport.dateReported = :date)
+    """)
+    int countOutliers(@Param("marketId") Long marketId, @Param("date") LocalDate date);
+
+
+
 }

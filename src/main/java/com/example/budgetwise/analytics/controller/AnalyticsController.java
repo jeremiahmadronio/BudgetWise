@@ -2,10 +2,7 @@ package com.example.budgetwise.analytics.controller;
 
 
 
-import com.example.budgetwise.analytics.dto.DiscoveryResponse;
-import com.example.budgetwise.analytics.dto.GainerDeclinerResponse;
-import com.example.budgetwise.analytics.dto.MarketComparisonChart;
-import com.example.budgetwise.analytics.dto.ProductAnalyticsResponse;
+import com.example.budgetwise.analytics.dto.*;
 import com.example.budgetwise.analytics.service.AnalyticsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -82,4 +79,7 @@ public class AnalyticsController {
 
         return ResponseEntity.ok(analyticsService.getMarketTopMovements(marketId, days));
     }
+
+
+
 }

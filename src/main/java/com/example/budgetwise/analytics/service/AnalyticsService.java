@@ -10,6 +10,7 @@ import com.example.budgetwise.product.repository.ProductInfoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.time.LocalDate;
@@ -171,6 +172,9 @@ public class AnalyticsService {
                 .limit(5)
                 .toList();
 
-        return new GainerDeclinerResponse(gainers, decliners);
+        return new GainerDeclinerResponse(gainers, decliners, movements.size(), pastData.size() - movements.size());
     }
+
+
+
 }
