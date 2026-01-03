@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
+
 @Repository
 public interface DailyPriceRecordRepository extends JpaRepository<DailyPriceRecord, Long> {
 
@@ -64,4 +66,22 @@ public interface DailyPriceRecordRepository extends JpaRepository<DailyPriceReco
            """)
     List<DailyPriceRecord> findLatestByProductId(@Param("productId") Long productId, Pageable pageable);
 
+
+    List<DailyPriceRecord> findTop30ByProductInfoIdAndMarketLocationIdOrderByPriceReport_DateReportedDesc(
+            Long productId, Long marketId);
+
+    @Query(value = """
+    SELECT d.price FROM daily_price_record d 
+    WHERE d.product_info_id = :productId AND d.market_location_id = :marketId 
+    ORDER BY d.id DESC LIMIT 1
+    """, nativeQuery = true)
+    Optional<Double> findLatestPriceByProductAndMarket(
+            @Param("productId") Long productId,
+            @Param("marketId") Long marketId);
+
+    Optional<DailyPriceRecord> findFirstByProductInfo_IdAndMarketLocation_IdOrderByIdDesc(
+            Long productId, Long marketId);
+
+    @Query("SELECT DISTINCT d.productInfo.id, d.marketLocation.id FROM DailyPriceRecord d")
+    List<Object[]> findExistingProductMarketPairs();
 }

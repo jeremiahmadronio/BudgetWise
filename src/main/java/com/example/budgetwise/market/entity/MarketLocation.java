@@ -1,4 +1,6 @@
 package com.example.budgetwise.market.entity;
+import com.example.budgetwise.prediction.entity.PricePredictions;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -38,6 +40,7 @@ public class MarketLocation {
     private Type type;
 
 
+    
     public enum Status { ACTIVE, INACTIVE };
 
     @Enumerated(EnumType.STRING)
@@ -69,6 +72,10 @@ public class MarketLocation {
 
     @OneToMany(mappedBy = "marketLocation", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private List<DailyPriceRecord> dailyPriceRecords;
+
+    @OneToMany(mappedBy = "marketLocation", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @JsonManagedReference 
+    private List<PricePredictions> pricePredictions;
 
 
 }

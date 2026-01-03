@@ -9,6 +9,7 @@ import com.example.budgetwise.market.dto.MarketTableResponse;
 import com.example.budgetwise.market.dto.MarketViewResponse;
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.projection.MarketProductRow;
+import com.example.budgetwise.product.entity.ProductInfo;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -121,7 +122,7 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
             m.description, 
             m.createdAt,        
             m.updatedAt
-        )
+        ) 
         FROM MarketLocation m
         WHERE m.id = :id
     """)
@@ -132,4 +133,8 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
     @Modifying(clearAutomatically = true)
     @Query("UPDATE MarketLocation m SET m.status = :status, m.updatedAt = CURRENT_TIMESTAMP WHERE m.id IN :ids")
     int updateMarketStatusBulk(@Param("status") MarketLocation.Status status, @Param("ids") List<Long> ids);
+
+
+List<MarketLocation> findAllByStatus(MarketLocation.Status status);
+
 }

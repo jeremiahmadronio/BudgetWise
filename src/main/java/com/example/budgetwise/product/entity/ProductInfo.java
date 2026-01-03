@@ -1,5 +1,8 @@
 package com.example.budgetwise.product.entity;
 import java.util.List;
+
+import com.example.budgetwise.prediction.entity.PricePredictions;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -59,6 +62,10 @@ public class ProductInfo {
 
     @OneToMany(mappedBy = "productInfo",fetch = FetchType.LAZY)
     private List<ProductDietaryTag> productDietaryTags;
+    
+    @OneToMany(mappedBy = "productInfo",fetch = FetchType.LAZY)
+    @JsonManagedReference
+    private List<PricePredictions>  pricePredictions;
 
 
 }

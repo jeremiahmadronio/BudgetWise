@@ -28,6 +28,9 @@ public interface ProductInfoRepository extends JpaRepository <ProductInfo, Long>
     Optional<ProductInfo> findById(Long id);
 
     boolean existsByProductName(String productName);
+    
+    List<ProductInfo>findAllByStatus(ProductInfo.Status status);
+    Page<ProductInfo> findAllByStatus(ProductInfo.Status status, Pageable pageable);
 
 
     @Query("SELECT p.id AS id, p.productName AS productName, p.category AS category FROM ProductInfo p ORDER BY p.productName ASC")
