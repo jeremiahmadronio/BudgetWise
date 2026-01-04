@@ -170,4 +170,12 @@ AND dpr.origin = :origin
     @Modifying(clearAutomatically = true)
     @Query("UPDATE ProductInfo p SET p.status = :status WHERE p.id IN :ids")
     int updateStatusForIds(@Param("status") ProductInfo.Status status, @Param("ids") List<Long> ids);
+
+
+    //prediction
+    @Query("""
+    SELECT COUNT(p) FROM ProductInfo p 
+    WHERE p.status = 'ACTIVE'
+""")
+    Integer countActiveProducts();
 }

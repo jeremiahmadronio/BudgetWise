@@ -135,6 +135,7 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
     int updateMarketStatusBulk(@Param("status") MarketLocation.Status status, @Param("ids") List<Long> ids);
 
 
-List<MarketLocation> findAllByStatus(MarketLocation.Status status);
+
+   
 
 }
