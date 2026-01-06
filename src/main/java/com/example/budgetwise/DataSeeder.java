@@ -152,13 +152,19 @@ public class DataSeeder implements CommandLineRunner {
         }
 
         if (productRepository.count() == 0) {
+            Set<String> seededProducts = new HashSet<>();
+
             for (PriceItem item : sourceData.price_data) {
-                if (!productRepository.existsByProductName(item.commodity)) {
+                String uniqueKey = item.commodity + "|" + item.category;
+
+                if (!seededProducts.contains(uniqueKey)) {
                     ProductInfo p = new ProductInfo();
                     p.setProductName(item.commodity);
                     p.setCategory(item.category);
                     p.setStatus(ProductInfo.Status.ACTIVE);
                     productRepository.save(p);
+
+                    seededProducts.add(uniqueKey);
                 }
             }
         }
