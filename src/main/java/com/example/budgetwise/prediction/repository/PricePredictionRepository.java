@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -166,7 +167,7 @@ public interface PricePredictionRepository extends JpaRepository<PricePrediction
     SELECT COUNT(p) 
     FROM PricePredictions p
     WHERE p.targetDate = :targetDate
-    AND p.status = 'ANOMALY'
+    AND p.status = 'ANOMALY' 
     AND p.id IN (
         SELECT MAX(p2.id) 
         FROM PricePredictions p2
@@ -175,5 +176,18 @@ public interface PricePredictionRepository extends JpaRepository<PricePrediction
     )
 """)
     Integer countLatestAnomaliesByDate(@Param("targetDate") LocalDate targetDate);
+
+
+    List<PricePredictions> findByProductInfoIdAndMarketLocationIdAndTargetDateAfter(
+            Long productInfoId,
+            Long marketLocationId,
+            LocalDate targetDate
+    );
+
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE PricePredictions p SET p.status = 'NORMAL', p.overridePrice = null WHERE p.id IN :ids")
+    int resetStatusByIds(@Param("ids") List<Long> ids);
 }
 

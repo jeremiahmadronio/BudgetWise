@@ -1,6 +1,8 @@
 package com.example.budgetwise.prediction.controller;
 
 import com.example.budgetwise.prediction.dto.*;
+import com.example.budgetwise.prediction.entity.PricePredictions;
+import com.example.budgetwise.prediction.repository.PricePredictionRepository;
 import com.example.budgetwise.prediction.service.PricePredictionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -15,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +31,7 @@ import java.util.concurrent.CompletableFuture;
 public class PricePredictionController {
 
     private final PricePredictionService predictionService;
+    private final PricePredictionRepository predictionRepo;
 
     /**
      * Trigger bulk prediction for all product-market pairs
@@ -59,18 +63,40 @@ public class PricePredictionController {
     @PostMapping("/generate")
     public ResponseEntity<Map<String, Object>> generateForecast(
             @RequestParam @Positive Long productId,
-            @RequestParam @Positive Long marketId) {
+            @RequestParam @Positive Long marketId,
+            @RequestParam(defaultValue = "false") boolean forceUpdate) {
 
         try {
-            predictionService.generateForecast(productId, marketId);
+            log.info("Generating forecast for product {} in market {} (forceUpdate: {})",
+                    productId, marketId, forceUpdate);
+
+            // Call the NEW overloaded method with forceUpdate
+            int count = predictionService.ManualGenerateForecast(productId, marketId, forceUpdate);
+
+            //Verify what was saved
+            List<PricePredictions> savedPredictions = predictionRepo
+                    .findByProductInfoIdAndMarketLocationIdAndTargetDateAfter(
+                            productId,
+                            marketId,
+                            LocalDate.now()
+                    );
 
             Map<String, Object> response = new HashMap<>();
-            response.put("status", "SUCCESS");
-            response.put("message", "Forecast generated successfully");
+            response.put("status", count > 0 ? "SUCCESS" : "NO_CHANGES");
+            response.put("message", count > 0
+                    ? "Forecast generated successfully"
+                    : "No predictions updated (may be overridden or insufficient data)");
             response.put("productId", productId);
             response.put("marketId", marketId);
+            response.put("predictionsGenerated", count);
+            response.put("totalPredictions", savedPredictions.size());
+            response.put("predictions", savedPredictions);
+
+            log.info("Generated {} new predictions, total {} predictions in DB",
+                    count, savedPredictions.size());
 
             return ResponseEntity.ok(response);
+
         } catch (Exception e) {
             log.error("Failed to generate forecast for product {} in market {}",
                     productId, marketId, e);
@@ -78,6 +104,9 @@ public class PricePredictionController {
             Map<String, Object> response = new HashMap<>();
             response.put("status", "ERROR");
             response.put("message", e.getMessage());
+            response.put("error", e.getClass().getSimpleName());
+            response.put("productId", productId);
+            response.put("marketId", marketId);
 
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
@@ -373,5 +402,16 @@ public class PricePredictionController {
         }
     }
 
+
+    @PostMapping("/reset")
+    public ResponseEntity<Map<String, Object>> reset(@RequestBody List<Long> ids) {
+        int count = predictionService.resetPredictions(ids);
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Successfully reset " + count + " prediction(s).",
+                "resetCount", count
+        ));
+    }
     
 }

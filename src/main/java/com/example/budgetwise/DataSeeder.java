@@ -109,9 +109,17 @@ public class DataSeeder implements CommandLineRunner {
             for (MarketLocation market : allMarkets) {
                 if (random.nextDouble() < 0.15) continue;
 
+                // Track which products were already added for this market on this date
+                Set<Long> addedProductIds = new HashSet<>();
+
                 for (PriceItem item : sourceData.price_data) {
                     ProductInfo product = productMap.get(item.commodity + "|" + item.category);
                     if (product == null) continue;
+
+                    // Skip if we already added this product for this market today
+                    if (addedProductIds.contains(product.getId())) {
+                        continue;
+                    }
 
                     double trendFactor = 0.90 + (0.10 * timeProgress);
                     double marketMarkup = (market.getType() == MarketLocation.Type.SUPERMARKET) ? 1.15 : 1.0;
@@ -129,6 +137,8 @@ public class DataSeeder implements CommandLineRunner {
                     record.setPriceReport(report);
 
                     batchRecords.add(record);
+
+                    addedProductIds.add(product.getId());
                 }
             }
             recordRepository.saveAll(batchRecords);

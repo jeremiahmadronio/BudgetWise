@@ -5,6 +5,7 @@ import java.util.List;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ProductCentricPredictionDTO(
+        
         Long productId,
         String productName,
         String productCode,
@@ -24,6 +25,7 @@ public record ProductCentricPredictionDTO(
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public record MarketPrediction(
+            Long predictionId,
             Long marketId,
             String marketName,
             String marketLocation,

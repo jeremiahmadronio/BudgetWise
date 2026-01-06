@@ -632,6 +632,7 @@ public class PricePredictionService {
                 .count();
 
         return new ProductCentricPredictionDTO(
+                
                 product.getId(),
                 product.getProductName(),
                 String.format("PROD-%03d", product.getId()), // Generate product code
@@ -672,6 +673,7 @@ public class PricePredictionService {
                 .countByProductInfoIdAndMarketLocationId(product.getId(), market.getId());
 
         return new ProductCentricPredictionDTO.MarketPrediction(
+                pred != null ? pred.getId() : null, 
                 market.getId(),
                 market.getMarketLocation(), // This is the name
                 String.format("%s (%.4f, %.4f)",
@@ -693,7 +695,7 @@ public class PricePredictionService {
     public DashboardStatsDTO getDashboardStats() {
         LocalDate tomorrow = LocalDate.now().plusDays(1);
 
-        // ✅ These stay the same
+        //  These stay the same
         Integer totalProducts = productRepo.countActiveProducts();
         Integer activeMarkets = marketRepo.countActiveMarkets();
 
@@ -703,7 +705,7 @@ public class PricePredictionService {
 
         Double modelAccuracy = (avgConfidence != null) ? avgConfidence * 100 : null;
 
-        // ✅ This stays the same
+        //  This stays the same
         LocalDateTime lastUpdate = predictionRepo.findLatestPredictionTime();
         String lastUpdated = null;
         if (lastUpdate != null) {
@@ -916,5 +918,154 @@ public class PricePredictionService {
             }
         };
     }
-   
+
+
+
+
+
+
+    @Transactional
+    public int ManualGenerateForecast(Long productId, Long marketId, boolean forceUpdate) {
+        List<DailyPriceRecord> history = priceRepo
+                .findTop30ByProductInfoIdAndMarketLocationIdOrderByPriceReport_DateReportedDesc(
+                        productId, marketId);
+
+        if (history.isEmpty() || history.size() < 14) {
+            log.warn("Insufficient data for product {} in market {} (found {} records)",
+                    productId, marketId, history.size());
+            return 0;
+        }
+
+        LocalDate lastDate = history.get(0).getPriceReport().getDateReported();
+        double currentPrice = history.get(0).getPrice();
+
+        SimpleRegression regression = new SimpleRegression();
+
+        for (int i = 0; i < history.size(); i++) {
+            int historyIndex = history.size() - 1 - i;
+            double price = history.get(historyIndex).getPrice();
+            regression.addData(i, price);
+        }
+
+        double slope = regression.getSlope();
+        double rSquare = regression.getRSquare();
+
+        double avgPrice = history.stream()
+                .mapToDouble(DailyPriceRecord::getPrice)
+                .average()
+                .orElse(0.0);
+
+        double variance = history.stream()
+                .mapToDouble(record -> Math.pow(record.getPrice() - avgPrice, 2))
+                .average()
+                .orElse(0.0);
+
+        double stdDev = Math.sqrt(variance);
+        double coefficientOfVariation = (avgPrice > 0) ? (stdDev / avgPrice) * 100 : 0;
+
+        double mape = calculateMAPE(history, regression);
+
+        double baseConfidence = calculateImprovedConfidence(
+                rSquare,
+                coefficientOfVariation,
+                mape,
+                history.size()
+        );
+
+        if (log.isDebugEnabled()) {
+            log.debug("Product {}, Market {} - Points: {}, R²: {:.3f}, CV: {:.2f}%, MAPE: {:.2f}%, BaseConf: {:.1f}%",
+                    productId, marketId, history.size(), rSquare,
+                    coefficientOfVariation, mape, baseConfidence * 100);
+        }
+
+        List<PricePredictions> predictions = new ArrayList<>();
+
+        for (int day = 1; day <= 7; day++) {
+            double rawForecast = regression.predict(history.size() + day - 1);
+            double finalPrice = Math.max(0.0, rawForecast);
+
+            double dayConfidence = baseConfidence * (1.0 - (day - 1) * 0.03);
+            dayConfidence = Math.max(0.30, Math.min(1.0, dayConfidence));
+
+            double priceChange = ((finalPrice - currentPrice) / currentPrice) * 100;
+
+            PricePredictions.Status status = determineStatus(
+                    priceChange,
+                    dayConfidence,
+                    coefficientOfVariation,
+                    day,
+                    mape
+            );
+
+            PricePredictions pred = createPrediction(
+                    history.get(0).getProductInfo(),
+                    history.get(0).getMarketLocation(),
+                    finalPrice,
+                    lastDate.plusDays(day),
+                    dayConfidence,
+                    status,
+                    forceUpdate 
+            );
+
+            if (pred != null) {
+                predictions.add(pred);
+            }
+        }
+
+        if (!predictions.isEmpty()) {
+            predictionRepo.saveAll(predictions);
+            predictionRepo.flush(); 
+
+            long anomalyCount = predictions.stream()
+                    .filter(p -> p.getStatus() == PricePredictions.Status.ANOMALY)
+                    .count();
+
+            log.info(" Saved {} predictions for product {} in market {} (confidence: {:.1f}%, anomalies: {})",
+                    predictions.size(), productId, marketId, baseConfidence * 100, anomalyCount);
+
+            return predictions.size();
+        }
+
+        log.warn(" No predictions saved for product {} in market {} (all may be overridden or skipped)",
+                productId, marketId);
+        return 0;
+    }
+
+
+    private PricePredictions createPrediction(
+            ProductInfo p,
+            MarketLocation m,
+            double price,
+            LocalDate date,
+            double conf,
+            PricePredictions.Status status,
+            boolean forceUpdate) {
+
+        PricePredictions pred = predictionRepo
+                .findByProductInfoAndMarketLocationAndTargetDate(p, m, date)
+                .orElse(new PricePredictions());
+
+        if (pred.getId() != null && pred.getStatus() == PricePredictions.Status.OVERRIDDEN) {
+            log.info(" REGENERATING: Overwriting manual override for {} on {} as requested by Admin.",
+                    p.getProductName(), date);
+        }
+
+        pred.setProductInfo(p);
+        pred.setMarketLocation(m);
+        pred.setPredictedPrice(price); 
+        pred.setConfidenceScore(conf);
+        pred.setTargetDate(date);
+
+        pred.setStatus(status);
+
+        return pred;
+    }
+
+    @Transactional
+    public int resetPredictions(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        return predictionRepo.resetStatusByIds(ids);
+    }
 }
