@@ -403,15 +403,6 @@ public class PricePredictionController {
     }
 
 
-    @PostMapping("/reset")
-    public ResponseEntity<Map<String, Object>> reset(@RequestBody List<Long> ids) {
-        int count = predictionService.resetPredictions(ids);
-
-        return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Successfully reset " + count + " prediction(s).",
-                "resetCount", count
-        ));
-    }
+   
     
 }

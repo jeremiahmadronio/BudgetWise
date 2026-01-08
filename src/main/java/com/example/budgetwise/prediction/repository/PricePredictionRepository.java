@@ -185,9 +185,6 @@ public interface PricePredictionRepository extends JpaRepository<PricePrediction
     );
 
 
-    @Modifying
-    @Transactional
-    @Query("UPDATE PricePredictions p SET p.status = 'NORMAL', p.overridePrice = null WHERE p.id IN :ids")
-    int resetStatusByIds(@Param("ids") List<Long> ids);
+   
 }
 

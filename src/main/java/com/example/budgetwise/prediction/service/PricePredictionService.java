@@ -1061,11 +1061,5 @@ public class PricePredictionService {
         return pred;
     }
 
-    @Transactional
-    public int resetPredictions(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return 0;
-        }
-        return predictionRepo.resetStatusByIds(ids);
-    }
+   
 }
