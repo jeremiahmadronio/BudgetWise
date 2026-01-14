@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ProductInfoDietaryTagRepository extends JpaRepository<ProductInfo, Long> {
 
@@ -21,4 +23,5 @@ public interface ProductInfoDietaryTagRepository extends JpaRepository<ProductIn
 
     Page<ProductInfo> findAllByStatus(ProductInfo.Status status, Pageable pageable);
 
+    List<ProductInfo> findAllByStatus(ProductInfo.Status status);
 }
