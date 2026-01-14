@@ -1,6 +1,7 @@
 package com.example.budgetwise.product.entity;
 import java.util.List;
 
+import com.example.budgetwise.budgetplan.entity.ProductDietaryTag;
 import com.example.budgetwise.prediction.entity.PricePredictions;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;

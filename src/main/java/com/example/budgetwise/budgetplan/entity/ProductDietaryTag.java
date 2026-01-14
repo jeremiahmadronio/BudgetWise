@@ -1,5 +1,6 @@
-package com.example.budgetwise.product.entity;
+package com.example.budgetwise.budgetplan.entity;
 
+import com.example.budgetwise.product.entity.ProductInfo;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,7 +12,8 @@ import lombok.Setter;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
-@Table(name = "product_dietary_tag")
+@Table(name = "product_dietary_tag",
+        uniqueConstraints = {@UniqueConstraint(columnNames = {"product_info_id", "dietary_tag_id"})})
 public class ProductDietaryTag {
 
     @Id

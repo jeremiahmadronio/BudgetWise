@@ -3,10 +3,7 @@ package com.example.budgetwise.market.repository;
 
 
 import com.example.budgetwise.analytics.dto.MarketLookup;
-import com.example.budgetwise.market.dto.MarketDetail;
-import com.example.budgetwise.market.dto.MarketProductsResponse;
-import com.example.budgetwise.market.dto.MarketTableResponse;
-import com.example.budgetwise.market.dto.MarketViewResponse;
+import com.example.budgetwise.market.dto.*;
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.projection.MarketProductRow;
 import com.example.budgetwise.product.entity.ProductInfo;
@@ -18,6 +15,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -42,6 +41,53 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
             """)
     long countByStatus(MarketLocation.Status status);
 
+    long countByStatusAndUpdatedAtBetween(
+            MarketLocation.Status status, LocalDateTime startDate, LocalDateTime endDate
+
+    );
+
+    long countByStatusAndRatingsGreaterThanEqual(MarketLocation.Status status , double minRating);
+
+
+
+    @Query("""
+    SELECT new com.example.budgetwise.market.dto.MarketArchiveTableResponse(
+        m.id,
+        m.marketLocation,
+        m.type,
+        m.ratings,
+        m.updatedAt
+    )
+    FROM MarketLocation m
+    WHERE m.status = :status
+      AND LOWER(m.marketLocation) LIKE LOWER(CONCAT('%', :search, '%'))
+""")
+    Page<MarketArchiveTableResponse> findArchivedMarketsWithSearch(
+            @Param("status") MarketLocation.Status status,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
+    @Query("""
+    SELECT new com.example.budgetwise.market.dto.MarketArchiveTableResponse(
+        m.id,
+        m.marketLocation,
+        m.type,
+        m.ratings,
+        m.updatedAt
+    )
+    FROM MarketLocation m
+    WHERE m.status = :status
+""")
+    Page<MarketArchiveTableResponse> findArchivedMarketsNoSearch(
+            @Param("status") MarketLocation.Status status,
+            Pageable pageable
+    );
+
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE MarketLocation m SET m.status  =:status WHERE m.id IN :ids")
+    int updateStatusForIds(@Param("status") MarketLocation.Status status,@Param("ids") List<Long> ids);
 
 
     /**
@@ -53,20 +99,20 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
      * @return Page of MarketTableResponse.
      */
     @Query("""
-        SELECT new com.example.budgetwise.market.dto.MarketTableResponse(
-            m.id,
-            m.marketLocation,
-            m.type,
-            m.status,
-            COUNT(DISTINCT dpr.productInfo.id)
-        )
-        FROM MarketLocation m
-        LEFT JOIN m.dailyPriceRecords dpr
-        GROUP BY m.id, m.marketLocation, m.type, m.status
-        ORDER BY m.marketLocation ASC
-        """)
-    Page<MarketTableResponse> displayMarketInformation(Pageable pageable);
-
+    SELECT new com.example.budgetwise.market.dto.MarketTableResponse(
+        m.id,
+        m.marketLocation,
+        m.type,
+        m.status,
+        COUNT(DISTINCT dpr.productInfo.id)
+    )
+    FROM MarketLocation m 
+    LEFT JOIN m.dailyPriceRecords dpr
+    WHERE m.status = :status      
+    GROUP BY m.id, m.marketLocation, m.type, m.status
+    ORDER BY m.marketLocation ASC
+    """)
+    Page<MarketTableResponse> displayMarketInformation(@Param("status") MarketLocation.Status status, Pageable pageable);
 
 
     @Query("""
@@ -136,6 +182,8 @@ public interface MarketLocationRepository extends JpaRepository<MarketLocation, 
 
 
 
-   
+
+
+
 
 }

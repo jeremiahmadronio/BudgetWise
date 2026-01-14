@@ -53,7 +53,7 @@ public class MarketLocationService {
      */
     @Transactional(readOnly = true)
     public Page<MarketTableResponse> displayMarketTableInfo(Pageable pageable) {
-        return marketLocationRepository.displayMarketInformation(pageable);
+        return marketLocationRepository.displayMarketInformation(MarketLocation.Status.ACTIVE,pageable);
     }
 
 

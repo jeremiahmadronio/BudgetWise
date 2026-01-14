@@ -9,7 +9,7 @@ import com.example.budgetwise.product.dto.*;
 import com.example.budgetwise.product.entity.DailyPriceRecord;
 import com.example.budgetwise.product.entity.ProductInfo;
 import com.example.budgetwise.product.repository.DailyPriceRecordRepository;
-import com.example.budgetwise.product.repository.ProductDietaryTagRepository;
+import com.example.budgetwise.budgetplan.repository.ProductDietaryTagRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
 import com.example.budgetwise.product.repository.Projection.MarketPriceProjection;
 import lombok.RequiredArgsConstructor;
@@ -20,9 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.YearMonth;
 import java.util.*;
 import java.util.stream.Collectors;
 

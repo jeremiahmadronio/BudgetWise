@@ -1,4 +1,4 @@
-package com.example.budgetwise.product.entity;
+package com.example.budgetwise.budgetplan.entity;
 
 import jakarta.persistence.*;
 import java.util.List;
