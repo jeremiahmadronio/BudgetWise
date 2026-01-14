@@ -1,9 +1,6 @@
 package com.example.budgetwise.budgetplan.controller;
 
-import com.example.budgetwise.budgetplan.dto.CreateTagRequest;
-import com.example.budgetwise.budgetplan.dto.DietaryStatsResponse;
-import com.example.budgetwise.budgetplan.dto.ProductDietaryTagTableResponse;
-import com.example.budgetwise.budgetplan.dto.UpdateProductTagsRequest;
+import com.example.budgetwise.budgetplan.dto.*;
 import com.example.budgetwise.budgetplan.entity.DietaryTag;
 import com.example.budgetwise.budgetplan.service.DietaryTagService;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -60,4 +58,9 @@ public class DietaryTagController {
         ));
     }
 
+
+    @GetMapping("/options")
+    public ResponseEntity<List<DietaryTagOptionResponse>> getAllTagOptions() {
+        return ResponseEntity.ok(dietaryTagService.getAllDietaryTagOptions());
+    }
 }

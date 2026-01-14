@@ -2,6 +2,7 @@ package com.example.budgetwise.budgetplan.service;
 
 import com.example.budgetwise.budgetplan.dto.CreateTagRequest;
 import com.example.budgetwise.budgetplan.dto.DietaryStatsResponse;
+import com.example.budgetwise.budgetplan.dto.DietaryTagOptionResponse;
 import com.example.budgetwise.budgetplan.dto.ProductDietaryTagTableResponse;
 import com.example.budgetwise.budgetplan.entity.DietaryTag;
 import com.example.budgetwise.budgetplan.entity.ProductDietaryTag;
@@ -34,7 +35,8 @@ public class DietaryTagService {
         long totalProducts = productInfoDietaryTagRepository.countByStatus(activeStatus);
         long taggedProducts = productInfoDietaryTagRepository.countTaggedProducts(activeStatus);
         long untaggedProducts = productInfoDietaryTagRepository.countUntaggedProducts(activeStatus);
-        long totalOptions = dietaryTagRepository.count();
+        long totalOptions = dietaryTagRepository.countByStatus(DietaryTag.Status.ACTIVE);
+
 
         return new DietaryStatsResponse(
                 totalProducts,
@@ -55,6 +57,7 @@ public class DietaryTagService {
         }
 
         DietaryTag dietaryTag = new DietaryTag();
+        dietaryTag.setStatus(DietaryTag.Status.ACTIVE);
         dietaryTag.setTagName(cleanTagName);
         dietaryTag.setTagDescription(createTagRequest.tagDescription());
         return dietaryTagRepository.save(dietaryTag);
@@ -72,6 +75,7 @@ public class DietaryTagService {
         return productsPage.map(product -> {
             List<ProductDietaryTagTableResponse.TagOption> tags = product.getProductDietaryTags()
                     .stream()
+                    .filter(link -> link.getDietaryTag().getStatus() == DietaryTag.Status.ACTIVE)
                     .map(link -> new ProductDietaryTagTableResponse.TagOption(
                             link.getDietaryTag().getId(),
                             link.getDietaryTag().getTagName()
@@ -106,6 +110,13 @@ public class DietaryTagService {
             throw new IllegalArgumentException("One or more Dietary Tag IDs are invalid.");
         }
 
+        boolean hasInactiveTag = tagsToLink.stream()
+                .anyMatch(tag -> tag.getStatus() != DietaryTag.Status.ACTIVE);
+
+        if (hasInactiveTag) {
+            throw new IllegalArgumentException("Cannot assign an archived/inactive tag to a product.");
+        }
+
         List<ProductDietaryTag> newLinks = tagsToLink.stream()
                 .map(tag -> {
                     ProductDietaryTag link = new ProductDietaryTag();
@@ -118,5 +129,16 @@ public class DietaryTagService {
     }
 
 
+
+    @Transactional(readOnly = true)
+    public List<DietaryTagOptionResponse>getAllDietaryTagOptions() {
+        return dietaryTagRepository.findAllByOrderByTagNameAsc().stream()
+                .map(tag -> new DietaryTagOptionResponse(
+                        tag.getId(),
+                        tag.getTagName(),
+                        tag.getTagDescription(),
+                        tag.getUpdatedAt()
+                )).toList();
+    }
 
 }

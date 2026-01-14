@@ -31,6 +31,16 @@ public class DietaryTag {
     private String tagDescription;
 
 
+    public enum Status{
+        ACTIVE,
+        INACTIVE
+    }
+
+    @Column
+    @Enumerated(EnumType.STRING)
+    private Status status;
+
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
