@@ -1,9 +1,6 @@
 package com.example.budgetwise.budgetplan.service;
 
-import com.example.budgetwise.budgetplan.dto.CreateTagRequest;
-import com.example.budgetwise.budgetplan.dto.DietaryStatsResponse;
-import com.example.budgetwise.budgetplan.dto.DietaryTagOptionResponse;
-import com.example.budgetwise.budgetplan.dto.ProductDietaryTagTableResponse;
+import com.example.budgetwise.budgetplan.dto.*;
 import com.example.budgetwise.budgetplan.entity.DietaryTag;
 import com.example.budgetwise.budgetplan.entity.ProductDietaryTag;
 import com.example.budgetwise.budgetplan.repository.DietaryTagRepository;
@@ -16,7 +13,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -139,6 +135,30 @@ public class DietaryTagService {
                         tag.getTagDescription(),
                         tag.getUpdatedAt()
                 )).toList();
+    }
+
+
+    @Transactional
+    public DietaryTag updateDietaryTagDetails(Long id , UpdateDietaryTagRequest updateDietaryTagRequest) {
+
+        DietaryTag existingTag = dietaryTagRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Dietary Tag with id " + id + " does not exist"));
+
+        String newTagName = updateDietaryTagRequest.tagName().trim();
+
+        if(!existingTag.getTagName().equalsIgnoreCase(newTagName)) {
+            if(dietaryTagRepository.existsByTagNameIgnoreCase(newTagName)) {
+                throw new IllegalArgumentException("Dietary Tag with name " + newTagName + " already exists");
+            }
+        }
+
+
+        existingTag.setTagName(newTagName);
+        existingTag.setTagDescription(updateDietaryTagRequest.description());
+
+        return dietaryTagRepository.save(existingTag);
+
+
     }
 
 }

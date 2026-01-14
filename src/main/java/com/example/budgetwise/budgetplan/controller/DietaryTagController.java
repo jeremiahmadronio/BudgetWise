@@ -63,4 +63,20 @@ public class DietaryTagController {
     public ResponseEntity<List<DietaryTagOptionResponse>> getAllTagOptions() {
         return ResponseEntity.ok(dietaryTagService.getAllDietaryTagOptions());
     }
+
+    @PutMapping("/updateTag/{tagId}")
+    public ResponseEntity<DietaryTagOptionResponse> updateDietaryTag(
+            @PathVariable Long tagId,
+            @RequestBody UpdateDietaryTagRequest request) {
+
+        DietaryTag updatedTag = dietaryTagService.updateDietaryTagDetails(tagId, request);
+        DietaryTagOptionResponse response = new DietaryTagOptionResponse(
+                updatedTag.getId(),
+                updatedTag.getTagName(),
+                updatedTag.getTagDescription(),
+                updatedTag.getUpdatedAt()
+        );
+
+        return ResponseEntity.ok(response);
+    }
 }
