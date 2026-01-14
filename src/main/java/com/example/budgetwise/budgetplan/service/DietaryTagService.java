@@ -4,7 +4,9 @@ import com.example.budgetwise.budgetplan.dto.CreateTagRequest;
 import com.example.budgetwise.budgetplan.dto.DietaryStatsResponse;
 import com.example.budgetwise.budgetplan.dto.ProductDietaryTagTableResponse;
 import com.example.budgetwise.budgetplan.entity.DietaryTag;
+import com.example.budgetwise.budgetplan.entity.ProductDietaryTag;
 import com.example.budgetwise.budgetplan.repository.DietaryTagRepository;
+import com.example.budgetwise.budgetplan.repository.ProductDietaryTagRepository;
 import com.example.budgetwise.budgetplan.repository.ProductInfoDietaryTagRepository;
 import com.example.budgetwise.product.entity.ProductInfo;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class DietaryTagService {
 
     private final DietaryTagRepository dietaryTagRepository;
     private final ProductInfoDietaryTagRepository productInfoDietaryTagRepository;
+    private final ProductDietaryTagRepository productDietaryTagRepository;
 
 
     @Transactional(readOnly = true)
@@ -82,6 +85,36 @@ public class DietaryTagService {
                     tags
             );
         });
+    }
+
+
+
+    @Transactional
+    public void updateProductDietaryTag(Long productId, List<Long> tagIds){
+
+        ProductInfo product =  productInfoDietaryTagRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("Product with id " + productId + " does not exist"));
+
+        productDietaryTagRepository.deleteAllByProductId(productId);
+
+        if(tagIds == null || tagIds.isEmpty()){
+            return;
+        }
+
+        List<DietaryTag> tagsToLink = dietaryTagRepository.findAllById(tagIds);
+        if (tagsToLink.size() != tagIds.size()) {
+            throw new IllegalArgumentException("One or more Dietary Tag IDs are invalid.");
+        }
+
+        List<ProductDietaryTag> newLinks = tagsToLink.stream()
+                .map(tag -> {
+                    ProductDietaryTag link = new ProductDietaryTag();
+                    link.setProductInfo(product);
+                    link.setDietaryTag(tag);
+                    return link;
+                })
+                .toList();
+        productDietaryTagRepository.saveAll(newLinks);
     }
 
 

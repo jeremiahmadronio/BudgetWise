@@ -3,6 +3,7 @@ package com.example.budgetwise.budgetplan.controller;
 import com.example.budgetwise.budgetplan.dto.CreateTagRequest;
 import com.example.budgetwise.budgetplan.dto.DietaryStatsResponse;
 import com.example.budgetwise.budgetplan.dto.ProductDietaryTagTableResponse;
+import com.example.budgetwise.budgetplan.dto.UpdateProductTagsRequest;
 import com.example.budgetwise.budgetplan.entity.DietaryTag;
 import com.example.budgetwise.budgetplan.service.DietaryTagService;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,19 @@ public class DietaryTagController {
 
         return  ResponseEntity.ok(dietaryTagService.getProductProductsWithDietaryTags(pageable));
 
+    }
+
+
+    @PutMapping("/products/{productId}/tags")
+    public ResponseEntity<Map<String, String>> updateProductTags(
+            @PathVariable Long productId,
+            @RequestBody UpdateProductTagsRequest request
+    ) {
+        dietaryTagService.updateProductDietaryTag(productId, request.tagIds());
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Product tags updated successfully"
+        ));
     }
 
 }

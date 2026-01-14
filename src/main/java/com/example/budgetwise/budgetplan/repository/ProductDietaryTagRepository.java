@@ -3,9 +3,11 @@ package com.example.budgetwise.budgetplan.repository;
 
 import com.example.budgetwise.budgetplan.entity.ProductDietaryTag;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 @Repository
@@ -31,4 +33,9 @@ public interface ProductDietaryTagRepository extends JpaRepository <ProductDieta
         GROUP BY pdt.productInfo.id
     """)
     List<TagCountProjection> countTagsByProductIds(@Param("productIds") List<Long> productIds);
+
+
+    @Modifying
+    @Query("DELETE FROM ProductDietaryTag pdt WHERE pdt.productInfo.id = :productId")
+    void deleteAllByProductId(Long productId);
 }
