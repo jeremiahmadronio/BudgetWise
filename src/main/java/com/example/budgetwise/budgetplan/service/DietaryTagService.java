@@ -128,7 +128,7 @@ public class DietaryTagService {
 
     @Transactional(readOnly = true)
     public List<DietaryTagOptionResponse>getAllDietaryTagOptions() {
-        return dietaryTagRepository.findAllByOrderByTagNameAsc().stream()
+        return dietaryTagRepository.findAllByStatusOrderByTagNameAsc(DietaryTag.Status.ACTIVE).stream()
                 .map(tag -> new DietaryTagOptionResponse(
                         tag.getId(),
                         tag.getTagName(),
@@ -160,5 +160,8 @@ public class DietaryTagService {
 
 
     }
+
+
+
 
 }
