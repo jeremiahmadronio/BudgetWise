@@ -4,7 +4,7 @@ package com.example.budgetwise.product.service;
 
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.service.MarketLocationResolver;
-import com.example.budgetwise.product.entity.PriceReport;
+import com.example.budgetwise.price_report.entity.PriceReport;
 import com.example.budgetwise.product.entity.ProductInfo;
 import com.example.budgetwise.scrapper.dto.ScrapeResultDto;
 import jakarta.transaction.Transactional;

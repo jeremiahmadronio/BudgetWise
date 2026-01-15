@@ -1,12 +1,12 @@
 package com.example.budgetwise;
 
 import com.example.budgetwise.product.entity.DailyPriceRecord;
-import com.example.budgetwise.product.entity.PriceReport;
+import com.example.budgetwise.price_report.entity.PriceReport;
 import com.example.budgetwise.product.entity.ProductInfo;
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.MarketLocationRepository;
 import com.example.budgetwise.product.repository.DailyPriceRecordRepository;
-import com.example.budgetwise.product.repository.PriceReportRepository;
+import com.example.budgetwise.price_report.repository.PriceReportRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.CommandLineRunner;

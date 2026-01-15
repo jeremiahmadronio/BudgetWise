@@ -3,6 +3,7 @@ package com.example.budgetwise.product.entity;
 
 
 import com.example.budgetwise.market.entity.MarketLocation;
+import com.example.budgetwise.price_report.entity.PriceReport;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

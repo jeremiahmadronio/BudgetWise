@@ -1,6 +1,7 @@
-package com.example.budgetwise.product.entity;
+package com.example.budgetwise.price_report.entity;
 
 
+import com.example.budgetwise.product.entity.DailyPriceRecord;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -34,10 +35,25 @@ public class PriceReport {
     private String url;
 
     public enum Status {COMPLETED, FAILED };
-    @Enumerated(EnumType.STRING)
 
+
+    @Enumerated(EnumType.STRING)
     @Column(length = 20)
     private Status status;
+
+    public enum DataSource{
+        MANUAL_UPLOAD,
+        WEB_SCRAPE,
+        API,
+        SYSTEM_GENERATED
+    };
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private DataSource  dataSource;
+
+    @Column
+    private Long durationMS;
 
     @CreationTimestamp
     @Column(updatable = false)

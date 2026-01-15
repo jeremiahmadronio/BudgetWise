@@ -5,12 +5,11 @@ import com.example.budgetwise.analytics.repository.projection.SummaryStatsProjec
 import com.example.budgetwise.analytics.repository.AnalyticsRepository;
 import com.example.budgetwise.market.entity.MarketLocation;
 import com.example.budgetwise.market.repository.MarketLocationRepository;
-import com.example.budgetwise.product.repository.PriceReportRepository;
+import com.example.budgetwise.price_report.repository.PriceReportRepository;
 import com.example.budgetwise.product.repository.ProductInfoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.time.LocalDate;

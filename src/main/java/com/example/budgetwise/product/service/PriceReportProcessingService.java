@@ -2,8 +2,8 @@ package com.example.budgetwise.product.service;
 
 
 
-import com.example.budgetwise.product.entity.PriceReport;
-import com.example.budgetwise.product.repository.PriceReportRepository;
+import com.example.budgetwise.price_report.entity.PriceReport;
+import com.example.budgetwise.price_report.repository.PriceReportRepository;
 import com.example.budgetwise.scrapper.dto.ScrapeResultDto;
 import org.springframework.stereotype.Service;
 
