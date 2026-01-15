@@ -79,4 +79,10 @@ public class DietaryTagController {
 
         return ResponseEntity.ok(response);
     }
+
+
+    @GetMapping("/coverage")
+    public ResponseEntity<List<CategoryCoverageResponse>> getCoverageStats() {
+        return ResponseEntity.ok(dietaryTagService.getCategoryCoverageStats());
+    }
 }

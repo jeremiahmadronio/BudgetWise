@@ -13,7 +13,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -161,6 +165,54 @@ public class DietaryTagService {
 
     }
 
+
+
+
+    @Transactional(readOnly = true)
+    public List<CategoryCoverageResponse> getCategoryCoverageStats() {
+        List<ProductInfo> products = productInfoDietaryTagRepository.findAllByStatus(ProductInfo.Status.ACTIVE);
+
+        Map<String, List<ProductInfo>> groupedByCategory = products.stream()
+                .filter(p -> p.getCategory() != null) // Safety check
+                .collect(Collectors.groupingBy(ProductInfo::getCategory));
+
+        List<CategoryCoverageResponse> report = new ArrayList<>();
+
+        for (Map.Entry<String, List<ProductInfo>> entry : groupedByCategory.entrySet()) {
+            String category = entry.getKey();
+            List<ProductInfo> categoryProducts = entry.getValue();
+
+            long totalCount = categoryProducts.size();
+
+            long taggedCount = categoryProducts.stream()
+                    .filter(p -> !p.getProductDietaryTags().isEmpty())
+                    .count();
+
+            double percentage = totalCount == 0 ? 0 : ((double) taggedCount / totalCount) * 100;
+
+            percentage = Math.round(percentage * 10.0) / 10.0;
+
+            String status;
+            if (percentage >= 80) {
+                status = "Excellent";
+            } else if (percentage >= 50) {
+                status = "Good";
+            } else {
+                status = "Needs Work";
+            }
+
+            report.add(new CategoryCoverageResponse(
+                    category,
+                    taggedCount,
+                    totalCount,
+                    percentage,
+                    status
+            ));
+        }
+        report.sort(Comparator.comparingDouble(CategoryCoverageResponse::coveragePercentage));
+
+        return report;
+    }
 
 
 
