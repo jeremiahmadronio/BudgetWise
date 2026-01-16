@@ -5,5 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record ScrapeRequestDto (
 
         @JsonProperty("target_url")
-        String url
+        String url,
+        @JsonProperty("file_content") String fileContent,
+        @JsonProperty("filename") String filename
 ){}

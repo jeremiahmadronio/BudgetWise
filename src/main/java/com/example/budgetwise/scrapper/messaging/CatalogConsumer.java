@@ -4,17 +4,16 @@ package com.example.budgetwise.scrapper.messaging;
 
 import com.example.budgetwise.product.service.ProductIngestionService;
 import com.example.budgetwise.scrapper.dto.ScrapeResultDto;
+import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class CatalogConsumer {
 
     private final ProductIngestionService productInfoService;
 
-    public CatalogConsumer(ProductIngestionService productInfoService) {
-        this.productInfoService = productInfoService;
-    }
 
 
     @RabbitListener(queues = "scraped_data_queue")
