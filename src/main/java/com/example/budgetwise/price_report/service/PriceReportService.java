@@ -25,11 +25,14 @@ public class PriceReportService {
             int page,
             int size,
             String statusStr,
-            String sourceStr,
+            String url,
             LocalDate startDate,
             LocalDate endDate
     ) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("dateReported").descending());
+        Sort sort = Sort.by("dateReported").descending()
+                .and(Sort.by("id").descending());
+
+        Pageable pageable = PageRequest.of(page, size, sort);
 
         PriceReport.Status status = null;
         if (statusStr != null && !statusStr.isBlank()) {
@@ -38,12 +41,8 @@ public class PriceReportService {
             } catch (IllegalArgumentException ignored) {}
         }
 
-        PriceReport.DataSource source = null;
-        if (sourceStr != null && !sourceStr.isBlank()) {
-            try {
-                source = PriceReport.DataSource.valueOf(sourceStr.toUpperCase());
-            } catch (IllegalArgumentException ignored) {}
-        }
-        return priceReportRepository.findReportsWithStats(status, source, startDate, endDate, pageable);
+        String searchUrl = (url != null && !url.isBlank()) ? url : null;
+
+        return priceReportRepository.findReportsWithStats(status, searchUrl, startDate, endDate, pageable);
     }
 }

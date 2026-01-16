@@ -26,21 +26,21 @@ public interface PriceReportRepository extends JpaRepository<PriceReport, Long> 
             pr.dateReported,
             COUNT(DISTINCT dpr.productInfo.id),   
             COUNT(DISTINCT dpr.marketLocation.id),
-            COALESCE(pr.durationMS, 0L),
-            pr.dataSource,
+            COALESCE(pr.durationMS, 0),
+            pr.url,
             pr.status
         )
         FROM PriceReport pr
         LEFT JOIN pr.records dpr
         WHERE (:status IS NULL OR pr.status = :status)
-        AND (:source IS NULL OR pr.dataSource = :source)
+        AND (:url IS NULL OR pr.url LIKE %:url%)
         AND (:startDate IS NULL OR pr.dateReported >= :startDate)
         AND (:endDate IS NULL OR pr.dateReported <= :endDate)
-        GROUP BY pr.id, pr.dateReported, pr.durationMS, pr.dataSource, pr.status
+        GROUP BY pr.id, pr.dateReported, pr.durationMS, pr.dataSource, pr.url, pr.status
     """)
     Page<ReportTableResponse> findReportsWithStats(
             @Param("status") PriceReport.Status status,
-            @Param("source") PriceReport.DataSource source,
+            @Param("url") String url,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             Pageable pageable

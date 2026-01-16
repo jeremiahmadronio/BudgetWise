@@ -27,12 +27,12 @@ public class PriceReportController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String url,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
     ) {
         return ResponseEntity.ok(priceReportService.getPriceReports(
-                page, size, status, source, startDate, endDate
+                page, size, status, url, startDate, endDate
         ));
     }
 }
