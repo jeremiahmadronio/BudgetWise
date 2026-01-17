@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 
 @RestController
-@RequestMapping("/api/v1/scrape")
+@RequestMapping("/api/v1/admin/scrape")
 public class ScrapeController {
 
     private final ScrapperTrigger scrapperTrigger;

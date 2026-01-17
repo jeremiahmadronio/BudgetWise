@@ -16,7 +16,7 @@ import java.util.Map;
 
 @RestController
 @Controller
-@RequestMapping("/api/v1/dietaryTag")
+@RequestMapping("/api/v1/admin/dietaryTag")
 @RequiredArgsConstructor
 public class DietaryTagController {
 

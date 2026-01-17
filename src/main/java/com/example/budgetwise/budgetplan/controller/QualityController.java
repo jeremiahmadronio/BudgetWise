@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/quality") // Base Path
+@RequestMapping("/api/v1/admin/quality") // Base Path
 @RequiredArgsConstructor
 public class QualityController {
 

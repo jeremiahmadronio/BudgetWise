@@ -18,7 +18,7 @@ import java.util.Map;
 
 @Controller
 @RestController
-@RequestMapping("api/v1/markets/archive")
+@RequestMapping("api/v1/admin/markets/archive")
 @RequiredArgsConstructor
 public class MarketArchiveController {
 

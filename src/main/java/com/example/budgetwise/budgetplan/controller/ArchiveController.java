@@ -17,7 +17,7 @@ import java.util.Map;
 
 @RestController
 @Controller
-@RequestMapping("/api/v1/archiveTag")
+@RequestMapping("/api/v1/admin/archiveTag")
 @RequiredArgsConstructor
 public class ArchiveController {
 

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 @Controller
-@RequestMapping("api/v1/archive")
+@RequestMapping("api/v1/admin/archive")
 @RequiredArgsConstructor
 public class ArchiveProductController {
     

@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 @RestController
-@RequestMapping("/api/v1/predictions")
+@RequestMapping("/api/v1/admin/predictions")
 @RequiredArgsConstructor
 @Validated
 @Slf4j
