@@ -1,5 +1,6 @@
 package com.example.budgetwise.user.service;
 
+import com.example.budgetwise.security.JwtService;
 import com.example.budgetwise.user.entity.User;
 import com.example.budgetwise.user.repository.UserRepository;
 import jakarta.servlet.ServletException;
@@ -13,6 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -20,33 +23,24 @@ import java.util.Optional;
 public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
+    private final JwtService jwtService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-
         OAuth2User oAuth2User = (OAuth2User) authentication.getPrincipal();
         String email = oAuth2User.getAttribute("email");
+        User user = userRepository.findByEmail(email).orElseThrow();
 
-        Optional<User> userOptional = userRepository.findByEmail(email);
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("id", user.getId());
+        claims.put("role", user.getRole().name());
+        String token = jwtService.generateToken(user, claims);
 
-        if (userOptional.isPresent()) {
-            User user = userOptional.get();
-            String role = user.getRole().name();
-            Long id = user.getId();
+        String targetUrl = "http://localhost:5173/auth/callback";
+        String finalUrl = UriComponentsBuilder.fromUriString(targetUrl)
+                .queryParam("token", token)
+                .build().toUriString();
 
-
-
-            String targetUrl = "http://localhost:5173/auth/callback";
-
-            String finalUrl = UriComponentsBuilder.fromUriString(targetUrl)
-                    .queryParam("id", id)
-                    .queryParam("role", role)
-                    .queryParam("email", email)
-                    .build().toUriString();
-
-            getRedirectStrategy().sendRedirect(request, response, finalUrl);
-        } else {
-            super.onAuthenticationSuccess(request, response, authentication);
-        }
+        getRedirectStrategy().sendRedirect(request, response, finalUrl);
     }
 }
