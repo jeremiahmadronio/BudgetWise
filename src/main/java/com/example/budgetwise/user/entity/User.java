@@ -1,21 +1,25 @@
 package com.example.budgetwise.user.entity;
 
-
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
 
-@Table(name = "users")
-@AllArgsConstructor
-@NoArgsConstructor
 @Entity
+@Table(name = "users")
 @Getter
 @Setter
 @Builder
-public class User {
+@AllArgsConstructor
+@NoArgsConstructor
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,10 +35,13 @@ public class User {
     private String password;
 
 
+    @Lob
+    @Column(length = 100000)
+    private byte[] photo;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private  Role role;
+    private Role role;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "auth_provider", length = 20)
@@ -47,12 +54,26 @@ public class User {
     @Column(length = 20)
     private Status status;
 
-
     @Column
     private String address;
 
+
+
+    @Builder.Default
+    private boolean accountNonExpired = true;
+
+    @Builder.Default
+    private boolean accountNonLocked = true;
+
+    @Builder.Default
+    private boolean credentialsNonExpired = true;
+
+    @Builder.Default
+    private boolean enabled = true;
+
+
     @CreationTimestamp
-    @Column(updatable = false , nullable = false)
+    @Column(updatable = false, nullable = false)
     private LocalDateTime createdDate;
 
     @UpdateTimestamp
@@ -60,20 +81,30 @@ public class User {
 
 
 
-
-    public enum Role{
-        ADMIN,
-        USER
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-    public enum AuthProvider{
-        LOCAL,
-        GOOGLE
+    @Override
+    public String getUsername() {
+        return email;
     }
 
-    public enum Status{
-        ACTIVE,
-        INACTIVE
-    }
+    @Override
+    public boolean isAccountNonExpired() { return accountNonExpired; }
 
+    @Override
+    public boolean isAccountNonLocked() { return accountNonLocked; }
+
+    @Override
+    public boolean isCredentialsNonExpired() { return credentialsNonExpired; }
+
+    @Override
+    public boolean isEnabled() { return enabled; }
+
+
+    public enum Role { ADMIN, USER }
+    public enum AuthProvider { LOCAL, GOOGLE }
+    public enum Status { ACTIVE, INACTIVE }
 }
